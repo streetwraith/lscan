@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load static intel_extras %}
+
+{% block title %}Helion | intel{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" href="{% static 'intel/css/intel.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="intel" data-window="{{ window }}">
+    {{ filters|json_script:"intel-filters" }}
+
+    {% if is_demo %}
+    <div class="demo-banner">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        DEMO — mock killmails, real aggregation. No live API calls. Click a region / system / ship / target to filter all pilots.
+    </div>
+    {% endif %}
+
+    {# --- Paste / input panel (non-functional in demo) --- #}
+    <section class="card paste-panel">
+        <label for="names">Paste character names (one per line)</label>
+        <textarea id="names" rows="3" placeholder="Paste a fleet / local chat list here…" disabled>ALL BLACK
+Lord AARP</textarea>
+        <button type="button" disabled title="Disabled in demo">Analyze</button>
+    </section>
+
+    {# --- Window selector --- #}
+    <section class="card window-selector">
+        <span class="ws-label">Window:</span>
+        {% for w in windows %}
+        <button type="button" class="win-btn{% if w == window %} active{% endif %}" data-window="{{ w }}">{{ window_btn|lookup:w }}</button>
+        {% endfor %}
+        <span class="ws-note muted">{{ profiles|length }} character{{ profiles|length|pluralize }} · click a row to expand</span>
+    </section>
+
+    {# --- Active filter chips (managed by JS) --- #}
+    <div id="filter-bar" class="filter-bar"></div>
+
+    {# --- Character blocks (async-swappable) --- #}
+    <div id="char-blocks">
+        {% include "intel/_char_blocks.html" %}
+    </div>
+
+</div>
+{% endblock %}
+
+{% block footer %}
+<script src="{% static 'intel/js/intel.js' %}"></script>
+{% endblock %}

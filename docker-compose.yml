@@ -1,0 +1,20 @@
+# Local dev Postgres for lscan. Bound to 127.0.0.1 only, on a non-default port
+# (55433) to avoid clashing with the helion-dev Postgres (55432) on this host.
+# Credentials are local-dev only; the real horizon database is provisioned at
+# deploy time, not from this file.
+name: lscan-dev
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: lscan
+      POSTGRES_PASSWORD: lscan
+      POSTGRES_DB: lscan
+    ports:
+      - "127.0.0.1:55433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

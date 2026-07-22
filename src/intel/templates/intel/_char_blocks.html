@@ -1,0 +1,42 @@
+{% load intel_extras %}
+{% for profile in profiles %}
+{% with c=profile.character r=profile.reputation m=profile.metrics %}
+<div class="char-block">
+
+    {# --- Collapsed compact row (click to expand; detail lazy-loaded) --- #}
+    <div class="char-summary" role="button" tabindex="0" aria-expanded="false">
+        <img class="cs-portrait" src="https://images.evetech.net/characters/{{ c.id }}/portrait?size=64" alt="">
+        <div class="cs-id">
+            <div class="cs-name">{{ c.name }}
+                <span class="badge {{ r.threat_class }}">{{ r.threat_label }} {{ r.danger_ratio }}%</span>
+                <span class="badge {{ c.sec_class }}">{{ c.sec_status }}</span>
+            </div>
+            <div class="cs-aff">
+                <img src="https://images.evetech.net/corporations/{{ c.corporation_id }}/logo?size=32" alt=""> {{ c.corporation }}
+                <img src="https://images.evetech.net/alliances/{{ c.alliance_id }}/logo?size=32" alt=""> {{ c.alliance }}
+            </div>
+        </div>
+        <div class="cs-stats">
+            <div class="cs-chip"><span class="v">{{ m.kills }}</span><span class="k">K</span></div>
+            <div class="cs-chip"><span class="v">{% if target_filter %}<span class="na" title="losses aren't filtered by target">—</span>{% else %}{{ m.losses }}{% endif %}</span><span class="k">L</span></div>
+            <div class="cs-chip"><span class="v">{{ m.solo_pct }}%</span><span class="k">solo</span></div>
+            <div class="cs-chip"><span class="v">{{ m.gang_pct }}%</span><span class="k">gang</span></div>
+            <div class="cs-chip"><span class="v">{{ m.avg_gang }}</span><span class="k">avg gang</span></div>
+            <div class="cs-chip"><span class="v">{{ m.fw_pct }}%</span><span class="k">fw</span></div>
+            <div class="cs-chip"><span class="v">{{ m.stealth_pct }}%</span><span class="k">stealth</span></div>
+            <div class="cs-chip"><span class="v">{{ m.isk_destroyed }}</span><span class="k">ISK</span></div>
+            <div class="cs-chip"><span class="v">{% if target_filter %}<span class="na" title="efficiency needs losses, which aren't filtered by target">—</span>{% else %}{{ m.isk_eff }}%{% endif %}</span><span class="k">eff</span></div>
+        </div>
+        <i class="bi bi-chevron-down expand-ind"></i>
+        <div class="cs-row2">
+            <span class="cs-seg cs-space"><span class="lab">space</span>{% for sp in profile.space %}<span class="sp-count"><span class="dot {{ sp.cls }}"></span>{{ sp.abbr }} {{ sp.n }}</span>{% if not forloop.last %} · {% endif %}{% endfor %}</span>
+            <span class="cs-seg cs-ships"><span class="lab">ships</span>{% for sh in profile.ships_flown %}<span class="filterable {% if sh.is_stealth %}stealthname{% endif %}" data-filter="ship" data-value="{{ sh.name }}">{{ sh.name }}</span>{% if not forloop.last %} · {% endif %}{% empty %}<span class="muted">—</span>{% endfor %}</span>
+            <span class="cs-seg cs-targets"><span class="lab">targets</span>{% for t in profile.targets %}<span class="filterable" data-filter="target" data-value="{{ t.name }}">{{ t.name }} {{ t.pct }}%</span>{% if not forloop.last %} · {% endif %}{% endfor %}</span>
+        </div>
+    </div>
+
+    {# detail loaded on first expand (keeps filter/window swaps lightweight) #}
+    <div class="char-detail" data-char-id="{{ c.id }}" data-loaded="0"></div>
+</div>
+{% endwith %}
+{% endfor %}

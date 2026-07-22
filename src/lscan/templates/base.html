@@ -1,0 +1,38 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}lscan{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        :root { color-scheme: light; }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            color: #1f2933;
+            background: #f5f6f8;
+        }
+        header.site {
+            background: #1f2933;
+            color: #fff;
+            padding: 10px 16px;
+        }
+        header.site .brand { font-weight: 600; letter-spacing: 0.5px; }
+        header.site .brand .sub { font-weight: 400; opacity: 0.7; margin-left: 8px; font-size: 0.85rem; }
+        main { padding: 0; }
+    </style>
+    {% block css %}{% endblock %}
+</head>
+<body>
+    <header class="site">
+        <span class="brand">lscan<span class="sub">PVP threat profiling</span></span>
+    </header>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+    {% block footer %}{% endblock %}
+</body>
+</html>
