@@ -93,3 +93,32 @@ The aggregation is done; going live means replacing the mock killmail source:
 4. Feed the fetched+enriched killmails into `build_profile` (unchanged) and
    enable the currently-disabled paste/analyze box.
 5. Optional: Celery + Redis for background fetching with progressive render.
+
+## Prior art: localthreat
+
+[localthreat](https://github.com/haggen/localthreat) (localthreat.xyz) is a mature
+tool with the same paste-a-local-list premise. It is built the other way around from
+lscan, which is worth recording because it explains our choices.
+
+**Its architecture is inverted from ours.** The backend (Bun + SQLite) fetches *no* EVE
+data - it only stores "reports", where a report is the pasted list of character names
+keyed by a short id (single table `reports(id, createdAt, source)`), so a scan is
+shareable / re-openable by URL. All EVE data is fetched *client-side, in the browser*:
+
+- ESI `universe/ids` (names->ids), `characters/affiliation` (ids->corp/alliance/faction),
+  `universe/names` (ids->names) - batched POSTs.
+- zKillboard `api/stats/characterID/{id}/` - per-character *aggregate* stats only: ships
+  destroyed/lost, danger %, gang %, top ship types. No killmails.
+
+**Rate limiting / cache.** A hand-rolled 100ms-tick queue per source (ESI batches many
+per tick; zKill drains one character per tick, ~10/s). Best-effort only - no backoff, no
+`User-Agent`, no retry, errors dropped. Caching is in-memory per page session plus a
+`localStorage` history of the last 50 report *name-lists*; ESI/zKill results are
+refetched every load and never persisted server-side.
+
+**Why lscan differs.** localthreat only needs zKill's aggregate stats endpoint, which is
+CORS-open and browser-fetchable. lscan wants the full *killmail history* to aggregate
+what/where/how a pilot kills - the heavier zKill use case that expects a descriptive UA +
+request spacing (browsers cannot set UA) and benefits from a server-side cache. That is
+why lscan is a server-rendered backend with a planned immutable `Killmail` cache (above)
+rather than a thin report-store with browser-side fetching.
