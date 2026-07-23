@@ -11,29 +11,36 @@
 <div class="intel" data-window="{{ window }}">
     {{ filters|json_script:"intel-filters" }}
 
-    {% if is_demo %}
-    <div class="demo-banner">
-        <i class="bi bi-exclamation-triangle-fill"></i>
-        DEMO — mock killmails, real aggregation. No live API calls. Click a region / system / ship / target to filter all pilots.
-    </div>
-    {% endif %}
-
-    {# --- Paste / input panel (non-functional in demo) --- #}
-    <section class="card paste-panel">
-        <label for="names">Paste character names (one per line)</label>
-        <textarea id="names" rows="3" placeholder="Paste a fleet / local chat list here…" disabled>ALL BLACK
+    {# --- Paste / input panel (non-functional in demo); window selector merged in --- #}
+    <div class="box mb-4">
+        <div class="field">
+            <label class="label" for="names">Paste character names (one per line)</label>
+            <p class="help">left-click on in-game chat members, press CTRL-A followed by CTRL-C</p>
+            <div class="control">
+                <textarea class="textarea" id="names" rows="3" placeholder="Paste a fleet / local chat list here…" disabled>ALL BLACK
 Lord AARP</textarea>
-        <button type="button" disabled title="Disabled in demo">Analyze</button>
-    </section>
-
-    {# --- Window selector --- #}
-    <section class="card window-selector">
-        <span class="ws-label">Window:</span>
-        {% for w in windows %}
-        <button type="button" class="win-btn{% if w == window %} active{% endif %}" data-window="{{ w }}">{{ window_btn|lookup:w }}</button>
-        {% endfor %}
-        <span class="ws-note muted">{{ profiles|length }} character{{ profiles|length|pluralize }} · click a row to expand</span>
-    </section>
+            </div>
+        </div>
+        <div class="level">
+            <div class="level-left">
+                <div class="level-item">
+                    <button type="button" class="button" disabled title="Disabled in demo">Analyze</button>
+                </div>
+                <div class="level-item">
+                    <span class="is-size-7 has-text-grey">{{ profiles|length }} character{{ profiles|length|pluralize }} · click a row to expand</span>
+                </div>
+            </div>
+            <div class="level-right">
+                <div class="level-item">
+                    <div class="buttons has-addons mb-0">
+                        {% for w in windows %}
+                        <button type="button" class="button is-small win-btn{% if w == window %} is-link is-selected{% endif %}" data-window="{{ w }}">{{ window_btn|lookup:w }}</button>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     {# --- Active filter chips (managed by JS) --- #}
     <div id="filter-bar" class="filter-bar"></div>

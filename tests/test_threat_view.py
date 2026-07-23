@@ -13,7 +13,6 @@ def test_full_page_renders() -> None:
     resp = Client().get("/")
     assert resp.status_code == 200
     assert b"char-blocks" in resp.content
-    assert b"DEMO" in resp.content
 
 
 def test_blocks_fragment_renders() -> None:

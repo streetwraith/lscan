@@ -1,185 +1,106 @@
-.intel {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 12px;
-    font-size: 90%;
-}
+/* App layer over Bulma — only what Bulma can't express: the domain colour
+   palette (threat/sec/stealth), the collapsible pilot row, and the bespoke
+   activity chart. Everything else now uses Bulma built-ins. Reuses --bulma-*
+   theme vars so light/dark follows Bulma. */
 
-.intel h2 { font-size: 1.2rem; }
-.intel h3 { font-size: 0.95rem; margin-bottom: 8px; border-bottom: 1px solid #e3e3e3; padding-bottom: 4px; }
+.intel { padding: 1rem 1.25rem; font-size: 90%; }
+.muted { color: var(--bulma-text-weak); font-size: 0.75rem; }
 
-.demo-banner {
-    background: #fff8e1;
-    border: 1px solid #f0d27a;
-    color: #7a5d00;
-    padding: 6px 10px;
-    border-radius: 4px;
-    margin-bottom: 12px;
-    font-size: 0.85rem;
-}
+/* flat, bordered boxes (no drop shadow) — matches the character-row look */
+.intel .box { box-shadow: none; border: 1px solid var(--bulma-border); }
 
-.card {
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    padding: 12px;
-    margin-bottom: 12px;
-    background: #fff;
-}
+/* domain colour palette — semantic threat/sec/stealth colours (no Bulma match) */
+.tag.tone-green  { background: #27ae60; color: #fff; }
+.tag.tone-yellow { background: #f1c40f; color: #3a3000; }
+.tag.tone-orange { background: #e67e22; color: #fff; }
+.tag.tone-red    { background: #c0392b; color: #fff; }
+.tag.badge-stealth { background: #5b2d91; color: #fff; }
 
-/* paste panel */
-.paste-panel label { display: block; font-size: 0.8rem; color: #666; margin-bottom: 4px; }
-.paste-panel textarea { width: 100%; box-sizing: border-box; font-family: monospace; resize: vertical; }
-.paste-panel button { margin-top: 6px; padding: 4px 14px; }
-
-/* character header */
-.char-header { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
-.char-header .portrait { width: 96px; height: 96px; border-radius: 6px; }
-.char-id { flex: 1 1 240px; }
-.char-id h2 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.aff { display: flex; align-items: center; gap: 6px; margin: 6px 0; color: #444; flex-wrap: wrap; }
-.aff img { width: 24px; height: 24px; }
-.zk-link { font-size: 0.8rem; }
-
-.summary-strip {
-    display: flex; flex-wrap: wrap; gap: 10px;
-    flex: 1 1 100%;
-    border-top: 1px solid #eee; padding-top: 10px; margin-top: 4px;
-}
-.summary-strip .stat { display: flex; flex-direction: column; min-width: 70px; }
-.summary-strip .stat .v { font-size: 1.1rem; font-weight: 600; }
-.summary-strip .stat .k { font-size: 0.7rem; color: #888; text-transform: uppercase; }
-
-/* badges */
-.badge { font-size: 0.7rem; padding: 2px 6px; border-radius: 10px; font-weight: 600; }
-/* shared tone palette — used by the threat badge and the sec-status badge */
-.badge.tone-green  { background: #27ae60; color: #fff; }
-.badge.tone-yellow { background: #f1c40f; color: #3a3000; }
-.badge.tone-orange { background: #e67e22; color: #fff; }
-.badge.tone-red    { background: #c0392b; color: #fff; }
-.badge-stealth { background: #5b2d91; color: #fff; }
-
-/* tables */
-.intel table { width: 100%; border-collapse: collapse; }
-.intel th, .intel td { border: 1px solid #e6e6e6; padding: 4px 8px; font-size: 0.82rem; text-align: right; }
-.intel th { background: #f6f6f6; font-weight: 600; }
-.intel td.rowlabel, .intel th:first-child { text-align: left; }
-.intel tr:hover { background: #f0f8ff; }
-.muted { color: #999; font-size: 0.75rem; }
-
-/* bars */
-.barcol { width: 34%; }
-.bar-track { background: #eee; border-radius: 3px; height: 12px; width: 100%; overflow: hidden; }
-.bar-fill { background: #3a7bd5; height: 100%; }
-.bar-fill.stealth { background: #5b2d91; }
-
-/* space-type colours (dots + bars) */
+/* space-type dots */
 .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; }
 .sec-high { background: #2ecc71; }
 .sec-low  { background: #e67e22; }
 .sec-null { background: #c0392b; }
-.sec-wh   { background: #2980b9; }
+.sec-wh   { background: #8e44ad; }
 .sec-other { background: #7f8c8d; }
-.bar-fill.sec-high { background: #2ecc71; }
-.bar-fill.sec-low  { background: #e67e22; }
-.bar-fill.sec-null { background: #c0392b; }
-.bar-fill.sec-wh   { background: #2980b9; }
-.bar-fill.sec-other { background: #7f8c8d; }
 
-.constellation { margin-top: 10px; font-size: 0.85rem; }
-
-/* window selector + per-window value toggling */
-.window-selector { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.window-selector .ws-label { font-size: 0.9rem; }
-.window-selector .ws-note { margin-left: auto; font-size: 0.72rem; font-style: italic; }
-.win-btn {
-    padding: 3px 14px; border: 1px solid #ccc; background: #f6f6f6;
-    cursor: pointer; border-radius: 4px; font-size: 0.85rem;
-}
-.win-btn:hover { background: #eef4fc; }
-.win-btn.active { background: #3a7bd5; color: #fff; border-color: #3a7bd5; }
-
-/* day-granular activity chart (zero-dependency CSS bars) */
-.chart { display: flex; align-items: flex-end; gap: 1px; height: 150px; padding: 6px 2px 2px; border-bottom: 1px solid #ddd; overflow: hidden; }
+/* daily activity chart — bespoke CSS bars (bar heights are inline, per-datum) */
+.chart { display: flex; align-items: flex-end; gap: 1px; height: 150px; padding: 6px 2px 2px; border-bottom: 1px solid var(--bulma-border); overflow: hidden; }
 .chart-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; min-width: 0; }
 .chart-bar-wrap { flex: 1; width: 100%; display: flex; align-items: flex-end; }
 .chart-bar { width: 100%; background: #3a7bd5; min-height: 0; }
 .chart-col:hover .chart-bar { background: #1f4f96; }
 .chart-col.weekend .chart-bar { background: #e0a458; }
 .chart-col.weekend:hover .chart-bar { background: #c77f1a; }
-.chart-x { font-size: 0.6rem; color: #999; margin-top: 3px; white-space: nowrap; }
+.chart-x { font-size: 0.6rem; color: var(--bulma-text-weak); margin-top: 3px; white-space: nowrap; }
 .chart-col.weekend .chart-x { color: #c77f1a; }
-.chart-legend { font-size: 0.72rem; color: #888; font-weight: 400; margin-left: 10px; }
+.chart-legend { font-size: 0.72rem; color: var(--bulma-text-weak); font-weight: 400; margin-left: 10px; }
 .chart-we-dot { background: #e0a458; }
 
-/* most-active location cell */
-td.loc { text-align: left; font-size: 0.75rem; line-height: 1.5; }
-td.loc span { display: block; white-space: nowrap; color: #555; }
-td.loc i { color: #999; margin-right: 3px; }
+/* most-active location cell (stacked, small) */
+td.loc { font-size: 0.75rem; line-height: 1.5; }
+td.loc span { display: block; white-space: nowrap; color: var(--bulma-text-weak); }
+td.loc i { color: var(--bulma-text-weak); margin-right: 3px; opacity: 0.7; }
 
-/* active filter chips */
+/* active filter chips (Bulma tags built by JS) + clickable filter values */
 .filter-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
 .filter-bar:empty { display: none; }
-.chip {
-    display: inline-flex; align-items: center; gap: 5px; font-size: 0.78rem;
-    background: #eef4fc; border: 1px solid #cfe0f5; border-radius: 12px; padding: 2px 8px; color: #2c5fa8;
-}
-.chip .chip-x { cursor: pointer; font-weight: 700; color: #888; margin-left: 2px; }
-.chip .chip-x:hover { color: #c0392b; }
-.chip-clear { font-size: 0.74rem; background: none; border: none; color: #888; cursor: pointer; text-decoration: underline; }
-
-/* clickable filter values */
-.filterable { cursor: pointer; text-decoration: underline dotted #bbb; text-underline-offset: 2px; }
-.filterable:hover { background: #fff3cd; text-decoration-color: #e0a458; }
+.filter-bar .tags { margin-bottom: 0; }
+.filterable { cursor: pointer; text-decoration: underline dotted var(--bulma-text-weak); text-underline-offset: 2px; }
+.filterable:hover { background: color-mix(in srgb, #e0a458 25%, transparent); text-decoration-color: #e0a458; }
 
 #char-blocks.loading { opacity: 0.5; transition: opacity .1s; }
-.empty-state { color: #999; font-size: 0.85rem; padding: 16px; text-align: center; }
-.na { color: #bbb; cursor: help; }
+.empty-state { color: var(--bulma-text-weak); font-size: 0.85rem; padding: 16px; text-align: center; }
+.na { color: var(--bulma-text-weak); cursor: help; opacity: 0.7; }
 
-/* one block per pasted character (collapsed by default) */
+/* collapsible pilot row + expanded detail (Bulma has no accordion component) */
 .char-block { margin-bottom: 8px; }
-
 .char-summary {
     display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
-    cursor: pointer; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; background: #fff;
+    cursor: pointer; padding: 8px 12px; border: 1px solid var(--bulma-border); border-radius: 6px;
+    background: var(--bulma-scheme-main);
 }
-.char-summary:hover { background: #f0f8ff; }
+.char-summary:hover { background: color-mix(in srgb, var(--bulma-link) 8%, var(--bulma-scheme-main)); }
 .char-block.expanded .char-summary {
-    background: #eef4fc; border-color: #cfe0f5; border-bottom: none;
+    background: color-mix(in srgb, var(--bulma-link) 12%, var(--bulma-scheme-main));
+    border-color: color-mix(in srgb, var(--bulma-link) 30%, transparent); border-bottom: none;
     border-radius: 6px 6px 0 0;
 }
 .cs-portrait { width: 48px; height: 48px; border-radius: 5px; }
 .cs-id { min-width: 190px; }
 .cs-name { font-weight: 600; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.cs-aff { font-size: 0.76rem; color: #555; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 2px; }
+.cs-aff { font-size: 0.76rem; color: var(--bulma-text-weak); display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 2px; }
 .cs-aff img { width: 18px; height: 18px; }
 .cs-stats { display: flex; gap: 12px; flex-wrap: wrap; }
 .cs-chip { display: flex; flex-direction: column; align-items: center; min-width: 40px; }
 .cs-chip .v { font-weight: 600; font-size: 0.92rem; }
-.cs-chip .k { font-size: 0.6rem; color: #888; text-transform: uppercase; }
-.expand-ind { margin-left: auto; color: #999; transition: transform .15s; }
+.cs-chip .k { font-size: 0.6rem; color: var(--bulma-text-weak); text-transform: uppercase; }
+.expand-ind { margin-left: auto; color: var(--bulma-text-weak); transition: transform .15s; }
 .char-block.expanded .expand-ind { transform: rotate(180deg); }
 .cs-row2 {
     flex-basis: 100%; width: 100%;
     display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
     grid-template-areas: "space ships" "targets targets";
     gap: 4px 20px;
-    font-size: 0.78rem; border-top: 1px dashed #e6e6e6; padding-top: 6px;
+    font-size: 0.78rem; border-top: 1px dashed var(--bulma-border); padding-top: 6px;
 }
 .cs-space { grid-area: space; }
 .cs-ships { grid-area: ships; }
 .cs-targets { grid-area: targets; }
 .cs-seg { display: flex; gap: 6px 8px; align-items: baseline; min-width: 0; flex-wrap: wrap; }
-.cs-seg .lab { color: #aaa; text-transform: uppercase; font-size: 0.62rem; flex-shrink: 0; }
+.cs-seg .lab { color: var(--bulma-text-weak); text-transform: uppercase; font-size: 0.62rem; flex-shrink: 0; }
 .sp-count { white-space: nowrap; }
 .cs-ships .stealthname { color: #5b2d91; font-weight: 600; }
 
 .char-detail {
-    display: none; border: 1px solid #cfe0f5; border-top: none;
-    border-radius: 0 0 6px 6px; padding: 12px; background: #fafcff;
+    display: none; border: 1px solid color-mix(in srgb, var(--bulma-link) 30%, transparent); border-top: none;
+    border-radius: 0 0 6px 6px; padding: 12px; background: color-mix(in srgb, var(--bulma-link) 5%, var(--bulma-scheme-main));
 }
 .char-block.expanded .char-detail { display: block; }
-.char-detail .card { background: #fff; }
 
-/* layout */
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-@media (max-width: 760px) { .grid-2 { grid-template-columns: 1fr; } }
+/* stealth-name purple: lift it on dark backgrounds so it stays legible. Cover both
+   auto (system) and the manual [data-theme] toggle, mirroring Bulma's dark selectors. */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .cs-ships .stealthname { color: #a986e0; }
+}
+[data-theme="dark"] .cs-ships .stealthname { color: #a986e0; }

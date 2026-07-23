@@ -4,35 +4,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
+    <script>
+        // Apply the saved theme before first paint (avoids a flash). Bulma reads
+        // data-theme on <html>; its absence means "follow the OS preference".
+        (function () {
+            try {
+                var t = localStorage.getItem('lscan-theme');
+                if (t) { document.documentElement.setAttribute('data-theme', t); }
+            } catch (e) {}
+        })();
+    </script>
     <title>{% block title %}lscan{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'intel/css/vendor/bulma.min.css' %}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
-        :root { color-scheme: light; }
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-            color: #1f2933;
-            background: #f5f6f8;
-        }
-        header.site {
-            background: #1f2933;
-            color: #fff;
-            padding: 10px 16px;
-        }
-        header.site .brand { font-weight: 600; letter-spacing: 0.5px; }
-        header.site .brand .sub { font-weight: 400; opacity: 0.7; margin-left: 8px; font-size: 0.85rem; }
-        main { padding: 0; }
-    </style>
     {% block css %}{% endblock %}
 </head>
 <body>
-    <header class="site">
-        <span class="brand">lscan<span class="sub">PVP threat profiling</span></span>
-    </header>
-    <main>
+    <nav class="navbar is-dark" role="navigation" aria-label="main navigation">
+        <div class="container">
+            <div class="navbar-brand">
+                <span class="navbar-item">
+                    <span class="has-text-weight-semibold">lscan</span>
+                    <span class="has-text-weight-normal is-size-7 ml-2 has-text-grey-light">PVP threat profiling</span>
+                    <span class="is-size-7 ml-2 has-text-grey-light">by&nbsp;<a href="https://entropiadev.com" target="_blank" rel="noopener" class="has-text-grey-light is-underlined">entropiadev.com</a></span>
+                </span>
+                <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="lscan-navbar">
+                    <span aria-hidden="true"></span>
+                    <span aria-hidden="true"></span>
+                    <span aria-hidden="true"></span>
+                </a>
+            </div>
+            <div id="lscan-navbar" class="navbar-menu">
+                <div class="navbar-end">
+                    <div class="navbar-item has-dropdown is-hoverable">
+                        <span class="navbar-link is-size-7">Like the tool? Tip me!</span>
+                        <div class="navbar-dropdown is-right">
+                            <div class="navbar-item is-size-7 is-flex is-justify-content-space-between is-align-items-center">
+                                <span>ISK in-game:&nbsp;<strong>Entropia Enterprises [ENT E]</strong></span>
+                                <button type="button" class="button is-small is-ghost ml-3" data-copy="Entropia Enterprises" title="Copy corporation name" aria-label="Copy corporation name">
+                                    <span class="icon is-small"><i class="bi bi-clipboard"></i></span>
+                                </button>
+                            </div>
+                            <hr class="navbar-divider">
+                            <div class="navbar-item is-size-7 is-flex is-justify-content-space-between is-align-items-center">
+                                <a href="bitcoin:bc1qpe4eckufvev4sapm2jvh6656p6qk7xtm2xgrmp?message=lscan%20tip">BTC:&nbsp;<span class="is-family-monospace">bc1qpe4eckufvev4sapm2jvh6656p6qk7xtm2xgrmp</span></a>
+                                <button type="button" class="button is-small is-ghost ml-3" data-copy="bc1qpe4eckufvev4sapm2jvh6656p6qk7xtm2xgrmp" title="Copy BTC address" aria-label="Copy BTC address">
+                                    <span class="icon is-small"><i class="bi bi-clipboard"></i></span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <a class="navbar-item" id="theme-toggle" role="button" aria-label="Toggle dark / light mode" title="Toggle dark / light mode">
+                        <span class="icon"><i class="bi bi-moon-stars"></i></span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <main class="container">
         {% block content %}{% endblock %}
     </main>
     {% block footer %}{% endblock %}
+    <script>
+        // Bulma burger toggle so the tip menu opens on touch / mobile.
+        document.querySelectorAll('.navbar-burger').forEach(function (burger) {
+            burger.addEventListener('click', function () {
+                var menu = document.getElementById(burger.dataset.target);
+                burger.classList.toggle('is-active');
+                if (menu) { menu.classList.toggle('is-active'); }
+            });
+        });
+
+        // Copy-to-clipboard on the tip rows. Secure contexts (https / localhost) use the
+        // async Clipboard API; other contexts fall back to execCommand.
+        function copyText(text) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                return navigator.clipboard.writeText(text);
+            }
+            var area = document.createElement('textarea');
+            area.value = text;
+            area.style.position = 'fixed';
+            area.style.opacity = '0';
+            document.body.appendChild(area);
+            area.select();
+            try { document.execCommand('copy'); } finally { document.body.removeChild(area); }
+            return Promise.resolve();
+        }
+        document.querySelectorAll('[data-copy]').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                copyText(btn.dataset.copy);
+                var icon = btn.querySelector('i');
+                if (!icon) { return; }
+                icon.className = 'bi bi-clipboard-check';
+                setTimeout(function () { icon.className = 'bi bi-clipboard'; }, 1200);
+            });
+        });
+
+        // Dark / light theme toggle (persisted). The icon shows the theme you'll switch to.
+        (function () {
+            var root = document.documentElement;
+            var toggle = document.getElementById('theme-toggle');
+            if (!toggle) { return; }
+            var icon = toggle.querySelector('i');
+            function effective() {
+                return root.getAttribute('data-theme')
+                    || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            }
+            function syncIcon() {
+                if (icon) { icon.className = effective() === 'dark' ? 'bi bi-sun' : 'bi bi-moon-stars'; }
+            }
+            toggle.addEventListener('click', function () {
+                var next = effective() === 'dark' ? 'light' : 'dark';
+                root.setAttribute('data-theme', next);
+                try { localStorage.setItem('lscan-theme', next); } catch (e) {}
+                syncIcon();
+            });
+            syncIcon();
+        })();
+    </script>
 </body>
 </html>

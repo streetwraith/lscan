@@ -41,24 +41,27 @@
             return;
         }
         keys.forEach(function (k) {
-            var chip = document.createElement('span');
-            chip.className = 'chip';
-            chip.innerHTML = '<i class="bi ' + (CHIP[k] || 'bi-funnel') + '"></i> ' +
-                k + ': <strong></strong> <span class="chip-x" data-key="' + k + '">&times;</span>';
+            var chip = document.createElement('div');
+            chip.className = 'tags has-addons chip';
+            chip.innerHTML = '<span class="tag"><i class="bi ' + (CHIP[k] || 'bi-funnel') + '"></i> ' +
+                k + ': <strong></strong></span>' +
+                '<a class="tag is-delete chip-x" data-key="' + k + '"></a>';
             chip.querySelector('strong').textContent = state.filters[k];
             filterBar.appendChild(chip);
         });
         var clear = document.createElement('button');
         clear.type = 'button';
         clear.id = 'clear-filters';
-        clear.className = 'chip-clear';
+        clear.className = 'button is-small is-ghost chip-clear';
         clear.textContent = 'clear all';
         filterBar.appendChild(clear);
     }
 
     function syncWindowButtons() {
         document.querySelectorAll('.win-btn').forEach(function (b) {
-            b.classList.toggle('active', b.dataset.window === state.window);
+            var on = b.dataset.window === state.window;
+            b.classList.toggle('is-link', on);
+            b.classList.toggle('is-selected', on);
         });
     }
 
