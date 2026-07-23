@@ -137,6 +137,25 @@ def _most_active_loc(kills_in_space: list[Killmail]) -> dict[str, str]:
     return {"region": region, "mid": mid, "system": system}
 
 
+def _build_ships(fk: list[Killmail], n: int) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Ship breakdowns: per exact hull (expanded view) and grouped by class (collapsed row)."""
+    assert len(fk) == n, (len(fk), n)
+    sgroup = {k["ship"]: (k["group"], k["stealth"]) for k in fk}
+    by_hull = [
+        {"name": name, "group": sgroup[name][0], "is_stealth": sgroup[name][1], "kills": cnt, "pct": _pct(cnt, n)}
+        for name, cnt in Counter(k["ship"] for k in fk).most_common(_TOP_SHIPS)
+    ]
+    # a class counts as stealth only if every one of its kills was a covert fit
+    stealth_class: dict[str, bool] = {}
+    for k in fk:
+        stealth_class[k["group"]] = stealth_class.get(k["group"], True) and bool(k["stealth"])
+    by_class = [
+        {"name": grp, "is_stealth": stealth_class[grp], "kills": cnt, "pct": _pct(cnt, n)}
+        for grp, cnt in Counter(k["group"] for k in fk).most_common(_TOP_SHIPS)
+    ]
+    return by_hull, by_class
+
+
 def build_profile(entry: dict[str, Any], window: str, filters: Filters) -> dict[str, Any]:
     """Aggregate one character entry into the single-window template structure."""
     assert window in WINDOWS, window
@@ -185,12 +204,7 @@ def build_profile(entry: dict[str, Any], window: str, filters: Filters) -> dict[
             }
         )
 
-    sgroup = {k["ship"]: (k["group"], k["stealth"]) for k in fk}
-    scount = Counter(k["ship"] for k in fk)
-    ships_flown = [
-        {"name": name, "group": sgroup[name][0], "is_stealth": sgroup[name][1], "kills": cnt, "pct": _pct(cnt, n)}
-        for name, cnt in scount.most_common(_TOP_SHIPS)
-    ]
+    ships_flown, ships_by_class = _build_ships(fk, n)
 
     return {
         "character": entry["character"],
@@ -199,6 +213,7 @@ def build_profile(entry: dict[str, Any], window: str, filters: Filters) -> dict[
         "targets": targets,
         "space": space,
         "ships_flown": ships_flown,
+        "ships_by_class": ships_by_class,
         "chart": _build_chart(fk, span),
         "has_data": n > 0,
     }

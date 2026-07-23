@@ -8,8 +8,8 @@
         <img class="cs-portrait" src="https://images.evetech.net/characters/{{ c.id }}/portrait?size=64" alt="">
         <div class="cs-id">
             <div class="cs-name">{{ c.name }}
-                <span class="badge {{ r.threat_class }}">{{ r.threat_label }} {{ r.danger_ratio }}%</span>
-                <span class="badge {{ c.sec_class }}">{{ c.sec_status }}</span>
+                <span class="tag {{ r.threat_class }}">{{ r.threat_label }} {{ r.danger_ratio }}%</span>
+                <span class="tag {{ c.sec_class }}">{{ c.sec_status }}</span>
             </div>
             <div class="cs-aff">
                 <img src="https://images.evetech.net/corporations/{{ c.corporation_id }}/logo?size=32" alt=""> {{ c.corporation }}
@@ -29,8 +29,8 @@
         </div>
         <i class="bi bi-chevron-down expand-ind"></i>
         <div class="cs-row2">
-            <span class="cs-seg cs-space"><span class="lab">space</span>{% for sp in profile.space %}<span class="sp-count"><span class="dot {{ sp.cls }}"></span>{{ sp.abbr }} {{ sp.n }}</span>{% if not forloop.last %} · {% endif %}{% endfor %}</span>
-            <span class="cs-seg cs-ships"><span class="lab">ships</span>{% for sh in profile.ships_flown %}<span class="filterable {% if sh.is_stealth %}stealthname{% endif %}" data-filter="ship" data-value="{{ sh.name }}">{{ sh.name }}</span>{% if not forloop.last %} · {% endif %}{% empty %}<span class="muted">—</span>{% endfor %}</span>
+            <span class="cs-seg cs-space"><span class="lab">space</span>{% for sp in profile.space %}<span class="sp-count"><span class="dot {{ sp.cls }}"></span>{{ sp.abbr }} {{ sp.pct }}%</span>{% if not forloop.last %} · {% endif %}{% endfor %}</span>
+            <span class="cs-seg cs-ships"><span class="lab">ships</span>{% for sh in profile.ships_by_class %}<span{% if sh.is_stealth %} class="stealthname"{% endif %}>{{ sh.name }} {{ sh.pct }}%</span>{% if not forloop.last %} · {% endif %}{% empty %}<span class="muted">—</span>{% endfor %}</span>
             <span class="cs-seg cs-targets"><span class="lab">targets</span>{% for t in profile.targets %}<span class="filterable" data-filter="target" data-value="{{ t.name }}">{{ t.name }} {{ t.pct }}%</span>{% if not forloop.last %} · {% endif %}{% endfor %}</span>
         </div>
     </div>
