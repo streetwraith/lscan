@@ -117,16 +117,36 @@ pilot in it (a 200-pilot fleet fight is stored once). Retention (e.g. last 90d/1
 pruning choice, never a correctness one; raw data is ~single-digit GB (90d) to low tens of
 GB (1y) - disk is not the constraint.
 
-**Storage: Postgres** (leaning). lscan's read is a point lookup by character plus a small
-aggregation, which Postgres serves in milliseconds at low CPU/RAM with the right index,
-and it fits the Django ORM. Since disk is cheap, denormalize: a flat **participation**
-table (one row per character-participation, victim or attacker: `character_id, killmail_id,
-ship_type_id, group_id, system_id, region_id, space_class, killmail_time, isk, solo, ...`)
-indexed on `(character_id, killmail_time)` - the per-pilot window query is then an index
-range scan. Raw killmail JSON lives in a separate `killmails` table for reprocessing. A
-columnar engine (ClickHouse, or embedded DuckDB/Parquet) is more efficient only for large
-group-by scans (fleet/region-wide analytics) - not needed for per-pilot reads; revisit if
-that scope appears.
+**Stats are computed by us, and are window-scoped.** The dumps give raw killmails, not
+zKill's precomputed stat block, so kills, losses, avg gang size, ISK efficiency, solo %,
+etc. are all derived from the stored killmails over the active window - exactly what
+`build_profile` already does. All-time *reputation* (danger/gang ratio, lifetime totals)
+can't come from a windowed store: fetch it from zKill's `/api/stats/characterID/{id}/`
+(one small, TTL-cached, per-pilot call shared across users), with sec-status / affiliations
+from ESI. So: windowed metrics local, all-time reputation from the cached stats call.
+
+**Schema (leaning Postgres** - lscan's read is a point lookup by character plus a small
+aggregation, milliseconds at low CPU/RAM, and it fits the Django ORM. Columnar (ClickHouse,
+or embedded DuckDB/Parquet) only wins for large cross-pilot group-by scans - revisit if
+fleet/region-wide analytics appear):
+
+- `killmails` - immutable raw store: `killmail_id` PK, time, system/region, victim
+  (char/corp/alliance/ship_type), `total_value`, `attacker_count`, flags, `hash`, and the
+  full `raw` JSONB for reprocessing. Indexed `(victim_char_id, killmail_time)` - a
+  character's **losses** come straight from here (the victim is one row per mail).
+- `participation` - attackers only, one row per (attacker, killmail); the inverted index
+  that turns per-pilot lookups into an index range scan. Stores raw hull ids
+  (`ship_type_id`, `victim_ship_type_id`) plus the *stable* denormalized fields
+  (`killmail_time, region_id, space_class, total_value, solo, stealth, final_blow,
+  attacker_count`). PK `(character_id, killmail_id)`, indexed `(character_id, killmail_time)`.
+  Written once at ingest, never updated.
+- `attacker_bucket` / `victim_bucket` - two small `type_id -> bucket` tables holding the
+  custom, independent ship classifications (attacker "ships flown" vs victim "targets" -
+  different value sets). Joined at read; edit them to reclassify with zero reprocessing of
+  `participation`. Principle: denormalize the *stable* facts, keep the *volatile*
+  classification as a joined map.
+- SDE - reuse the existing `sde` schema (same database) for id -> name display and the
+  stable `system -> region` / `security -> space_class` derivations; no bespoke ref tables.
 
 ## Prior art: localthreat
 
