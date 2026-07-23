@@ -94,6 +94,40 @@ The aggregation is done; going live means replacing the mock killmail source:
    enable the currently-disabled paste/analyze box.
 5. Optional: Celery + Redis for background fetching with progressive render.
 
+## Data pipeline (planned)
+
+Killmails are immutable and keyed by `killmail_id`, so the plan is a **shared,
+append-only store filled by a dedicated collector, read-only from lscan**. Collecting
+and serving are split into two apps sharing one database.
+
+- **Collector (separate app, owns all writes).** Backfills + pulls the daily raw dumps
+  (`r2z2.zkillboard.com/history/raw/YYYYMMDD.json`, re-pulling the last ~2-3 days for
+  late submissions) and tails the live feed (RedisQ, `zkillredisq.stream/listen.php?queueID=...`,
+  which delivers full killmails and remembers the queue for ~3h). All writes are
+  `INSERT ... ON CONFLICT (killmail_id) DO NOTHING`, so dumps / RedisQ / backfill overlap
+  harmlessly. Leaning **Go** (lean long-running daemon, single binary, low idle CPU/RAM,
+  `pgx` COPY for bulk inserts); the ingest load is light and I/O-bound (~20k killmails/day),
+  so the choice is about footprint/ops, not throughput.
+- **lscan (reader, read-only DB role).** Never calls zKill/ESI on the request path; it
+  queries the store and feeds `build_profile` (unchanged). Fetching is decoupled from user
+  traffic, so cost is O(killmail volume), not O(searches) - the point of the split.
+
+Immutability means a killmail is fetched once and cached forever, shared across every
+pilot in it (a 200-pilot fleet fight is stored once). Retention (e.g. last 90d/1y) is a
+pruning choice, never a correctness one; raw data is ~single-digit GB (90d) to low tens of
+GB (1y) - disk is not the constraint.
+
+**Storage: Postgres** (leaning). lscan's read is a point lookup by character plus a small
+aggregation, which Postgres serves in milliseconds at low CPU/RAM with the right index,
+and it fits the Django ORM. Since disk is cheap, denormalize: a flat **participation**
+table (one row per character-participation, victim or attacker: `character_id, killmail_id,
+ship_type_id, group_id, system_id, region_id, space_class, killmail_time, isk, solo, ...`)
+indexed on `(character_id, killmail_time)` - the per-pilot window query is then an index
+range scan. Raw killmail JSON lives in a separate `killmails` table for reprocessing. A
+columnar engine (ClickHouse, or embedded DuckDB/Parquet) is more efficient only for large
+group-by scans (fleet/region-wide analytics) - not needed for per-pilot reads; revisit if
+that scope appears.
+
 ## Prior art: localthreat
 
 [localthreat](https://github.com/haggen/localthreat) (localthreat.xyz) is a mature
