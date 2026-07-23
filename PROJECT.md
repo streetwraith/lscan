@@ -87,6 +87,7 @@ The aggregation is done; going live means replacing the mock killmail source:
    incremental, respectful UA + spacing) and ESI (names->ids, affiliations).
    Note: zKill from a server is fine; the browser cannot (forbidden UA header +
    CORS), which is why this is a backend, not a static site.
+   zKillboard killmail API docs: https://github.com/zKillboard/zKillboard/wiki/API-(Killmails)
 3. Add EVE SDE reference data for local enrichment (type/group/system/region ->
    names, security, classes) - as a DB import or bundled dataset.
 4. Feed the fetched+enriched killmails into `build_profile` (unchanged) and
