@@ -70,6 +70,7 @@ src/
     urls.py         # intel mounted at "/"
     wsgi.py asgi.py
     templates/base.html   # standalone chrome (no helion nav); provides title/css/content/footer blocks
+                          # also carries the one-line analytics snippet (see Conventions)
   intel/            # the (only) app
     views.py                # threat_profile: full page + blocks/detail/targets fragments
     profile_service.py      # THE aggregation (build_profile / build_all)
@@ -98,6 +99,23 @@ tests/                # pytest-django behavioural tests for the view
   are EVE's own image server (portraits, corp/alliance logos, ship icons). When swapping an
   icon, check the name exists in the pinned release - `icons.getbootstrap.com` documents a
   newer one.
+- **Analytics is same-origin, and that is deliberate** (added 2026-07-28). `base.html` loads
+  `<script defer src="/v.js" data-website-id="...">` - a **relative** path, so it does not
+  breach the no-CDN rule above: nothing third-party is contacted and no visitor IP leaks to
+  another vendor. Traffic goes to our **self-hosted Umami** on the `horizon` box, reached
+  because Traefik routes two paths on this app's own hostname straight to the umami
+  container: `GET /v.js` (tracker) and `POST /e/api/send` (collect). **Nothing in this repo
+  implements those two routes** - grep and you will not find them; they are Traefik labels on
+  the umami app, recorded in the infra repo (`umami.md`, `coolify.md`).
+  - The website id is a **public** identifier (it ships in the HTML), not a secret.
+  - ⚠️ **`/v.js` and `/e/` are reserved at the URL root.** Do not add app routes there or you
+    will shadow analytics - Traefik matches those before Django ever sees the request.
+  - ⚠️ **The two paths are coordinated with the collector**, which serves them via its
+    `TRACKER_SCRIPT_NAME` / `COLLECT_API_ENDPOINT` settings; changing one side alone silently
+    stops collection. They are deliberately bland (no `analytics`/`umami`/`track`) so filter
+    lists have nothing to key on.
+  - If a CSP is ever added to this app, `script-src 'self'`/`connect-src 'self'` already
+    covers analytics - no vendor host needs allowing.
 - **lscan owns no tables and runs no migrations.** There are no models, and the
   `admin`/`auth`/`sessions`/`contenttypes`/`messages` contrib apps are deliberately
   absent - the app is public, unauthenticated, and stateless. Its `DATABASE_URL`

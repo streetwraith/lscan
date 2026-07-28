@@ -20,6 +20,10 @@
     <link rel="stylesheet" href="{% static 'intel/css/vendor/bulma.min.css' %}">
     <link rel="stylesheet" href="{% static 'intel/css/vendor/bootstrap-icons.min.css' %}">
     {% block css %}{% endblock %}
+    <!-- Self-hosted Umami analytics. Same-origin on purpose: /v.js and /e/api/send are
+         routed to the umami container by Traefik labels, so there is no third-party host
+         for a tracker blocklist to match. Infra-side record: devops repo, umami.md. -->
+    <script defer src="/v.js" data-website-id="b867959d-ef15-4530-9a12-ec9a4fb8d8ce"></script>
 </head>
 <body>
     <nav class="navbar is-dark" role="navigation" aria-label="main navigation">
