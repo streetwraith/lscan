@@ -6,7 +6,11 @@ requires-python = ">=3.13"
 dependencies = [
     "django>=5.2,<5.3",
     "django-environ>=0.11",
+    "gunicorn>=26.0.0",
+    "httpx>=0.28.1",
     "psycopg[binary]>=3.2",
+    "redis>=8.0.1",
+    "whitenoise>=6.12.0",
 ]
 
 [dependency-groups]
@@ -37,7 +41,7 @@ select = ["E", "F", "I", "UP", "B"]
 python_version = "3.13"
 strict = true
 plugins = ["mypy_django_plugin.main"]
-mypy_path = "src"
+mypy_path = "src:tests"
 files = ["src", "tests"]
 
 [[tool.mypy.overrides]]
@@ -49,5 +53,5 @@ django_settings_module = "lscan.settings"
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "lscan.settings"
-pythonpath = ["src"]
+pythonpath = ["src", "tests"]
 testpaths = ["tests"]
