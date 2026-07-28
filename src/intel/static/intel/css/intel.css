@@ -14,7 +14,6 @@
 .tag.tone-yellow { background: #f1c40f; color: #3a3000; }
 .tag.tone-orange { background: #e67e22; color: #fff; }
 .tag.tone-red    { background: #c0392b; color: #fff; }
-.tag.badge-stealth { background: #5b2d91; color: #fff; }
 
 /* space-type dots */
 .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; }
@@ -25,27 +24,59 @@
 .sec-other { background: #7f8c8d; }
 
 /* daily activity chart — bespoke CSS bars (bar heights are inline, per-datum) */
-.chart { display: flex; align-items: flex-end; gap: 1px; height: 150px; padding: 6px 2px 2px; border-bottom: 1px solid var(--bulma-border); overflow: hidden; }
+/* the wrapper scrolls; the chart itself must not clip, or there is nothing to scroll to */
+.chart-scroll { overflow-x: auto; }
+.chart { display: flex; align-items: flex-end; gap: 1px; height: 150px; padding: 6px 2px 2px; border-bottom: 1px solid var(--bulma-border); }
 .chart-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; min-width: 0; }
 .chart-bar-wrap { flex: 1; width: 100%; display: flex; align-items: flex-end; }
 .chart-bar { width: 100%; background: #3a7bd5; min-height: 0; }
 .chart-col:hover .chart-bar { background: #1f4f96; }
 .chart-col.weekend .chart-bar { background: #e0a458; }
 .chart-col.weekend:hover .chart-bar { background: #c77f1a; }
-.chart-x { font-size: 0.6rem; color: var(--bulma-text-weak); margin-top: 3px; white-space: nowrap; }
+/* Fixed basis, not natural height: most columns carry no label (only Mondays / month
+   starts are labelled), and an empty span collapses to 0 - which both gave those columns a
+   taller bar area for the same value and let the labelled ones' text sit level with their
+   neighbours' bars. A constant strip keeps every bar on one baseline and leaves the labels
+   a lane of their own; text wider than a 2px column then spills over empty label space
+   rather than over a bar. */
+.chart-x { flex: 0 0 0.9rem; font-size: 0.6rem; line-height: 0.9rem; color: var(--bulma-text-weak); margin-top: 3px; white-space: nowrap; }
 .chart-col.weekend .chart-x { color: #c77f1a; }
 .chart-legend { font-size: 0.72rem; color: var(--bulma-text-weak); font-weight: 400; margin-left: 10px; }
 .chart-we-dot { background: #e0a458; }
 
 /* most-active location cell (stacked, small) */
 td.loc { font-size: 0.75rem; line-height: 1.5; }
-td.loc span { display: block; white-space: nowrap; color: var(--bulma-text-weak); }
-td.loc i { color: var(--bulma-text-weak); margin-right: 3px; opacity: 0.7; }
+/* one line per scope (region / constellation / system), the top few inline within it -
+   scoped to direct children so the nested entries do not each become their own line */
+td.loc > span { display: flex; align-items: baseline; gap: 4px; color: var(--bulma-text-weak); }
+td.loc > span > i { flex: 0 0 auto; }
+.loc-list { display: flex; flex-wrap: wrap; gap: 0 4px; min-width: 0; }
+.loc-list > span { white-space: nowrap; }
+td.loc .sep { opacity: 0.45; margin: 0 4px; }
+td.loc i { color: var(--bulma-text-weak); margin-right: 4px; opacity: 0.7; }
 
 /* active filter chips (Bulma tags built by JS) + clickable filter values */
 .filter-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
 .filter-bar:empty { display: none; }
 .filter-bar .tags { margin-bottom: 0; }
+/* Tighter top bar: override Bulma's own variable rather than fight its specificity
+   (default 3.25rem). Only the top-level items are squashed - the tip dropdown's items sit
+   deeper than these child selectors, so they keep Bulma's comfortable padding. */
+.navbar { --bulma-navbar-height: 2.5rem; }
+.navbar-brand > .navbar-item,
+.navbar-end > .navbar-item,
+.navbar-end > .navbar-item > .navbar-link { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+.navbar-burger { height: 2.5rem; width: 2.5rem; }
+
+/* CCP's licence requires a proprietary notice wherever their material is shown, and we
+   render portraits, corp/alliance logos and hull icons throughout - keep it unobtrusive */
+.lscan-footer {
+    margin-top: 2rem; padding: 10px 0 14px;
+    border-top: 1px solid var(--bulma-border);
+    font-size: 0.68rem; color: var(--bulma-text-weak); text-align: center;
+}
+.lscan-footer a { color: inherit; text-decoration: underline; }
+
 .filterable { cursor: pointer; text-decoration: underline dotted var(--bulma-text-weak); text-underline-offset: 2px; }
 .filterable:hover { background: color-mix(in srgb, #e0a458 25%, transparent); text-decoration-color: #e0a458; }
 
@@ -56,6 +87,7 @@ td.loc i { color: var(--bulma-text-weak); margin-right: 3px; opacity: 0.7; }
 /* collapsible pilot row + expanded detail (Bulma has no accordion component) */
 .char-block { margin-bottom: 8px; }
 .char-summary {
+    position: relative;
     display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
     cursor: pointer; padding: 8px 12px; border: 1px solid var(--bulma-border); border-radius: 6px;
     background: var(--bulma-scheme-main);
@@ -66,31 +98,76 @@ td.loc i { color: var(--bulma-text-weak); margin-right: 3px; opacity: 0.7; }
     border-color: color-mix(in srgb, var(--bulma-link) 30%, transparent); border-bottom: none;
     border-radius: 6px 6px 0 0;
 }
+/* pilots added by the most recent paste; cleared by the next refresh, since the swap
+   rebuilds these rows without the class */
+.char-block.is-new .char-summary,
+.char-block.is-new.expanded .char-summary,
+.char-block.is-new .char-detail { border-color: color-mix(in srgb, #e0a458 45%, var(--bulma-border)); }
+.char-block.is-new .char-summary::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px; background: color-mix(in srgb, #e0a458 60%, transparent); border-radius: 6px 0 0 6px;
+}
+
 .cs-portrait { width: 48px; height: 48px; border-radius: 5px; }
 .cs-id { min-width: 190px; }
 .cs-name { font-weight: 600; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.cs-aff { font-size: 0.76rem; color: var(--bulma-text-weak); display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-top: 2px; }
-.cs-aff img { width: 18px; height: 18px; }
-.cs-stats { display: flex; gap: 12px; flex-wrap: wrap; }
+/* affiliation now rides on the name line, so it keeps its own weight/size rather than
+   inheriting the name's 600 */
+.cs-aff {
+    font-size: 0.76rem; font-weight: 400; color: var(--bulma-text-weak);
+    display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+}
+.cs-aff .org { display: inline-flex; align-items: center; gap: 4px; }
+.cs-aff img { width: 18px; height: 18px; flex-shrink: 0; }
+/* space moved up into the identity block, where affiliation used to sit */
+.cs-spaceline { font-size: 0.78rem; margin-top: 2px; }
+/* identity stays left, the whole stats block is pushed right as one unit */
+.cs-stats { display: flex; gap: 12px; flex-wrap: wrap; margin-left: auto; justify-content: flex-end; }
 .cs-chip { display: flex; flex-direction: column; align-items: center; min-width: 40px; }
 .cs-chip .v { font-weight: 600; font-size: 0.92rem; }
 .cs-chip .k { font-size: 0.6rem; color: var(--bulma-text-weak); text-transform: uppercase; }
-.expand-ind { margin-left: auto; color: var(--bulma-text-weak); transition: transform .15s; }
+.cs-stealth .v { color: #5b2d91; }
+.expand-ind { color: var(--bulma-text-weak); transition: transform .15s; }
 .char-block.expanded .expand-ind { transform: rotate(180deg); }
 .cs-row2 {
     flex-basis: 100%; width: 100%;
-    display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
-    grid-template-areas: "space ships" "targets targets";
+    /* space moved up next to the identity, so this row is just ships over targets,
+       both starting at the left edge */
+    display: grid; grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "ships" "targets";
     gap: 4px 20px;
     font-size: 0.78rem; border-top: 1px dashed var(--bulma-border); padding-top: 6px;
 }
-.cs-space { grid-area: space; }
 .cs-ships { grid-area: ships; }
 .cs-targets { grid-area: targets; }
 .cs-seg { display: flex; gap: 6px 8px; align-items: baseline; min-width: 0; flex-wrap: wrap; }
 .cs-seg .lab { color: var(--bulma-text-weak); text-transform: uppercase; font-size: 0.62rem; flex-shrink: 0; }
 .sp-count { white-space: nowrap; }
-.cs-ships .stealthname { color: #5b2d91; font-weight: 600; }
+/* used in both the collapsed ship classes and the expanded "ships flown" table */
+.stealthname { color: #5b2d91; font-weight: 600; }
+/* the targets share bar carries less information than the location column next to it */
+.tgt-table .share-col { width: 22%; }
+/* hull icon in the expanded "ships flown" table; inline-flex keeps it on the text baseline */
+.ship-cell { display: inline-flex; align-items: center; gap: 6px; }
+.ship-icon { width: 24px; height: 24px; border-radius: 3px; flex-shrink: 0; }
+/* hulls with no type id (ESI recorded none) still reserve the slot, so names line up */
+.ship-icon.is-blank { background: var(--bulma-border); opacity: 0.35; }
+
+/* targets drill-down: each category row expands into the exact hulls behind it */
+.tgt-row { cursor: pointer; }
+.tgt-row.is-empty { cursor: default; }
+.tgt-ind { width: 1.5rem; text-align: right; color: var(--bulma-text-weak); }
+.tgt-ind i { display: inline-block; transition: transform .15s; }
+.tgt-row.expanded .tgt-ind i { transform: rotate(180deg); }
+.tgt-detail { display: none; }
+.tgt-detail.open { display: table-row; }
+.tgt-detail > td { padding: 0 0 0 1.5rem !important; }
+/* Cap the drill-down instead of letting it push the card past its neighbour: the targets
+   box is ~6 rows and "where they operate" ~5 taller rows, so roughly this much slack makes
+   the two columns match with one group open. Only one is open at a time (see intel.js). */
+.tgt-scroll { max-height: 8rem; overflow-y: auto; }
+.tgt-hulls { margin-bottom: 0; background: transparent; }
+.tgt-hulls td { border: none !important; padding: 2px 8px !important; font-size: 0.8rem; }
 
 .char-detail {
     display: none; border: 1px solid color-mix(in srgb, var(--bulma-link) 30%, transparent); border-top: none;
@@ -98,9 +175,61 @@ td.loc i { color: var(--bulma-text-weak); margin-right: 3px; opacity: 0.7; }
 }
 .char-block.expanded .char-detail { display: block; }
 
-/* stealth-name purple: lift it on dark backgrounds so it stays legible. Cover both
+/* ---------------------------------------------------------------- mobile
+   768px is Bulma's own until(tablet) boundary, so these kick in exactly when
+   .columns stops sitting side by side. Nothing here changes desktop. */
+@media screen and (max-width: 768px) {
+    /* The share bars are pure decoration on a phone: every percentage is already
+       printed in the Kills cell, so dropping the column costs no information and
+       buys back ~25-30% of the width the tables were overflowing by. */
+    .share-col { display: none; }
+
+    /* Identity sits beside the portrait instead of wrapping under it: without a
+       flex-basis of 0 its min-content (the affiliation line) pushes the whole block
+       onto its own row and leaves the space next to the portrait empty. */
+    .cs-id { flex: 1 1 0; min-width: 0; }
+    .cs-portrait { width: 40px; height: 40px; }
+
+    /* Chips full-width and left-aligned, tightened just enough that all seven fit on
+       one row - at the desktop sizes the last one (fw) wrapped on its own. */
+    .cs-stats { margin-left: 0; justify-content: flex-start; width: 100%; gap: 8px; }
+    .cs-chip { min-width: 32px; }
+    .cs-chip .v { font-size: 0.8rem; }
+    .cs-chip .k { font-size: 0.52rem; }
+
+    /* Out of the flow so it cannot claim a row of its own. */
+    .expand-ind { position: absolute; top: 8px; right: 10px; }
+
+    /* "Where they operate" was widening the table rather than wrapping. Fixed layout
+       caps the location column so its entries wrap inside it; each entry still stays
+       unbroken, so the wrap lands between locations. */
+    .wto-table { table-layout: fixed; }
+    .wto-table th:nth-child(1), .wto-table td:nth-child(1) { width: 26%; }
+    .wto-table th:nth-child(2), .wto-table td:nth-child(2) { width: 18%; }
+    td.loc { font-size: 0.7rem; }
+
+    /* Ship class is inferable from the hull name and costs a whole column. */
+    .class-col { display: none; }
+
+    /* Bars keep a usable width and the chart scrolls, instead of 30-365 columns
+       being squeezed to a few pixels each with their labels colliding. */
+    .chart-col { flex: 1 0 7px; }
+
+    /* Vertical space is cheap on a phone, horizontal is not. */
+    .tgt-scroll { max-height: 11rem; }
+
+    /* Brand: drop the tagline, keep the attribution but shrink it. */
+    .brand-tagline { display: none; }
+    .brand-by { font-size: 0.6rem; margin-left: 0.4rem !important; }
+
+    .lscan-footer { font-size: 0.62rem; }
+}
+
+/* stealth purple: lift it on dark backgrounds so it stays legible. Cover both
    auto (system) and the manual [data-theme] toggle, mirroring Bulma's dark selectors. */
 @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) .cs-ships .stealthname { color: #a986e0; }
+    :root:not([data-theme="light"]) .stealthname,
+    :root:not([data-theme="light"]) .cs-stealth .v { color: #a986e0; }
 }
-[data-theme="dark"] .cs-ships .stealthname { color: #a986e0; }
+[data-theme="dark"] .stealthname,
+[data-theme="dark"] .cs-stealth .v { color: #a986e0; }

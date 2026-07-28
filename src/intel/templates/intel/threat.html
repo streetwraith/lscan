@@ -1,33 +1,39 @@
 {% extends "base.html" %}
 {% load static intel_extras %}
 
-{% block title %}Helion | intel{% endblock %}
-
 {% block css %}
 <link rel="stylesheet" href="{% static 'intel/css/intel.css' %}">
 {% endblock %}
 
 {% block content %}
-<div class="intel" data-window="{{ window }}">
+<div class="intel" data-window="{{ window }}" data-names="{{ names_param }}">
     {{ filters|json_script:"intel-filters" }}
 
-    {# --- Paste / input panel (non-functional in demo); window selector merged in --- #}
+    {# --- Paste / input panel; window selector merged in --- #}
     <div class="box mb-4">
         <div class="field">
             <label class="label" for="names">Paste character names (one per line)</label>
-            <p class="help">left-click on in-game chat members, press CTRL-A followed by CTRL-C</p>
+            <p class="help">left-click on in-game chat members, press CTRL-A then CTRL-C - and CTRL-V anywhere on this page to add them to the list</p>
             <div class="control">
-                <textarea class="textarea" id="names" rows="3" placeholder="Paste a fleet / local chat list here…" disabled>ALL BLACK
-Lord AARP</textarea>
+                <textarea class="textarea" id="names" rows="3" placeholder="Paste a fleet / local chat list here…">{{ names_text }}</textarea>
             </div>
+            {% if dropped %}
+            <p class="help has-text-warning-dark">
+                <i class="bi bi-exclamation-triangle"></i>
+                list is capped at {{ max_characters }} pilots - {{ dropped }} further name{{ dropped|pluralize }} ignored
+            </p>
+            {% endif %}
+            {% if unresolved %}
+            <p class="help has-text-warning-dark">
+                <i class="bi bi-exclamation-triangle"></i>
+                not found in EVE: {% for n in unresolved %}<strong>{{ n }}</strong>{% if not forloop.last %}, {% endif %}{% endfor %}
+            </p>
+            {% endif %}
         </div>
         <div class="level">
             <div class="level-left">
                 <div class="level-item">
-                    <button type="button" class="button" disabled title="Disabled in demo">Analyze</button>
-                </div>
-                <div class="level-item">
-                    <span class="is-size-7 has-text-grey">{{ profiles|length }} character{{ profiles|length|pluralize }} · click a row to expand</span>
+                    <button type="button" class="button is-link" id="analyze">Analyze</button>
                 </div>
             </div>
             <div class="level-right">
@@ -47,7 +53,7 @@ Lord AARP</textarea>
 
     {# --- Character blocks (async-swappable) --- #}
     <div id="char-blocks">
-        {% include "intel/_char_blocks.html" %}
+        {% if error %}{% include "intel/_error.html" %}{% else %}{% include "intel/_char_blocks.html" %}{% endif %}
     </div>
 
 </div>

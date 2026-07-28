@@ -1,5 +1,3 @@
-{% load intel_extras %}
-{% with m=profile.metrics %}
 {% if not profile.has_data %}
 <div class="empty-state"><i class="bi bi-funnel"></i> No kills match the current filter for this character.</div>
 {% else %}
@@ -7,6 +5,7 @@
     <h3 class="title is-6">Kill activity <span class="muted">(daily)</span>
         <span class="chart-legend"><span class="dot chart-we-dot"></span> weekend</span>
     </h3>
+    <div class="chart-scroll">
     <div class="chart">
         {% for b in profile.chart %}
         <div class="chart-col{% if b.we %} weekend{% endif %}" title="{{ b.v }} kills">
@@ -15,66 +14,68 @@
         </div>
         {% endfor %}
     </div>
+    </div>
 </div>
 
 <div class="columns mb-4">
-    <div class="column">
+    <div class="column is-5">
         <div class="box">
             <h3 class="title is-6">Targets — what they kill</h3>
-            <table class="table is-fullwidth is-hoverable is-narrow">
-                <thead><tr><th>Category</th><th>Kills</th><th>share</th></tr></thead>
+            <div class="table-container"><table class="table is-fullwidth is-hoverable is-narrow tgt-table">
+                <thead><tr><th>Category</th><th>Kills</th><th class="share-col">share</th><th></th></tr></thead>
                 <tbody>
                     {% for t in profile.targets %}
-                    <tr>
+                    <tr class="tgt-row{% if not t.n %} is-empty{% endif %}" data-bucket="{{ t.name }}" role="button" tabindex="0" aria-expanded="false">
                         <td><span class="filterable" data-filter="target" data-value="{{ t.name }}"><i class="bi {{ t.icon }}"></i> {{ t.name }}</span></td>
                         <td>{{ t.n }} <span class="muted">({{ t.pct }}%)</span></td>
-                        <td><progress class="progress is-link is-small" value="{{ t.pct }}" max="100">{{ t.pct }}%</progress></td>
+                        <td class="share-col"><progress class="progress is-link is-small" value="{{ t.pct }}" max="100">{{ t.pct }}%</progress></td>
+                        <td class="tgt-ind">{% if t.n %}<i class="bi bi-chevron-down"></i>{% endif %}</td>
                     </tr>
+                    <tr class="tgt-detail" data-loaded="0"><td colspan="4"></td></tr>
                     {% endfor %}
                 </tbody>
-            </table>
+            </table></div>
         </div>
     </div>
 
-    <div class="column">
+    <div class="column is-7">
         <div class="box">
             <h3 class="title is-6">Where they operate</h3>
-            <table class="table is-fullwidth is-hoverable is-narrow">
-                <thead><tr><th>Space</th><th>Kills</th><th>share</th><th>Most active <span class="muted">region / const / system</span></th></tr></thead>
+            <div class="table-container"><table class="table is-fullwidth is-hoverable is-narrow wto-table">
+                <thead><tr><th>Space</th><th>Kills</th><th class="share-col">share</th><th>Most active <span class="muted">region / const / system</span></th></tr></thead>
                 <tbody>
                     {% for sp in profile.space %}
                     <tr>
-                        <td><span class="dot {{ sp.cls }}"></span> {{ sp.name }}</td>
+                        <td><span class="filterable" data-filter="space" data-value="{{ sp.name }}"><span class="dot {{ sp.cls }}"></span> {{ sp.name }}</span></td>
                         <td>{{ sp.n }} <span class="muted">({{ sp.pct }}%)</span></td>
-                        <td><progress class="progress is-link is-small" value="{{ sp.pct }}" max="100">{{ sp.pct }}%</progress></td>
+                        <td class="share-col"><progress class="progress is-link is-small" value="{{ sp.pct }}" max="100">{{ sp.pct }}%</progress></td>
                         <td class="loc">
-                            <span>{% if sp.loc.region != "—" %}<span class="filterable" data-filter="region" data-value="{{ sp.loc.region }}"><i class="bi bi-globe2"></i> {{ sp.loc.region }}</span>{% else %}<i class="bi bi-globe2"></i> —{% endif %}</span>
-                            <span>{% if sp.loc.mid != "—" %}<span class="filterable" data-filter="const" data-value="{{ sp.loc.mid }}"><i class="bi bi-diagram-3"></i> {{ sp.loc.mid }}</span>{% else %}<i class="bi bi-diagram-3"></i> —{% endif %}</span>
-                            <span>{% if sp.loc.system != "—" %}<span class="filterable" data-filter="system" data-value="{{ sp.loc.system }}"><i class="bi bi-pin-map"></i> {{ sp.loc.system }}</span>{% else %}<i class="bi bi-pin-map"></i> —{% endif %}</span>
+                            <span><i class="bi bi-globe2"></i><span class="loc-list">{% for l in sp.loc.region %}<span class="filterable" data-filter="region" data-value="{{ l.name }}">{{ l.name }} {{ l.pct }}%</span>{% if not forloop.last %}<span class="sep">·</span>{% endif %}{% empty %}—{% endfor %}</span></span>
+                            <span><i class="bi bi-diagram-3"></i><span class="loc-list">{% for l in sp.loc.mid %}<span class="filterable" data-filter="const" data-value="{{ l.name }}">{{ l.name }} {{ l.pct }}%</span>{% if not forloop.last %}<span class="sep">·</span>{% endif %}{% empty %}—{% endfor %}</span></span>
+                            <span><i class="bi bi-pin-map"></i><span class="loc-list">{% for l in sp.loc.system %}<span class="filterable" data-filter="system" data-value="{{ l.name }}">{{ l.name }} {{ l.pct }}%</span>{% if not forloop.last %}<span class="sep">·</span>{% endif %}{% empty %}—{% endfor %}</span></span>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
-            </table>
+            </table></div>
         </div>
     </div>
 </div>
 
 <div class="box">
     <h3 class="title is-6">Ships flown to kill</h3>
-    <table class="table is-fullwidth is-hoverable is-narrow">
-        <thead><tr><th>Ship</th><th>Class</th><th>Kills</th><th>share</th></tr></thead>
+    <div class="table-container"><table class="table is-fullwidth is-hoverable is-narrow">
+        <thead><tr><th>Ship</th><th class="class-col">Class</th><th>Kills</th><th class="share-col">share</th></tr></thead>
         <tbody>
             {% for sh in profile.ships_flown %}
             <tr>
-                <td><span class="filterable" data-filter="ship" data-value="{{ sh.name }}">{{ sh.name }}</span>{% if sh.is_stealth %}<span class="tag badge-stealth"><i class="bi bi-eye-slash-fill"></i> covert</span>{% endif %}</td>
-                <td>{{ sh.group }}</td>
+                <td><span class="filterable ship-cell{% if sh.is_stealth %} stealthname{% endif %}" data-filter="ship" data-value="{{ sh.name }}"{% if sh.is_stealth %} title="covert-capable hull"{% endif %}>{% if sh.type_id %}<img class="ship-icon" src="https://images.evetech.net/types/{{ sh.type_id }}/icon?size=32" alt="" loading="lazy">{% else %}<span class="ship-icon is-blank"></span>{% endif %}{{ sh.name }}</span></td>
+                <td class="class-col">{{ sh.group }}</td>
                 <td>{{ sh.kills }} <span class="muted">({{ sh.pct }}%)</span></td>
-                <td><progress class="progress is-link is-small" value="{{ sh.pct }}" max="100">{{ sh.pct }}%</progress></td>
+                <td class="share-col"><progress class="progress is-link is-small" value="{{ sh.pct }}" max="100">{{ sh.pct }}%</progress></td>
             </tr>
             {% endfor %}
         </tbody>
-    </table>
+    </table></div>
 </div>
 {% endif %}
-{% endwith %}

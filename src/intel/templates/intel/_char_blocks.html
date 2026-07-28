@@ -1,19 +1,23 @@
-{% load intel_extras %}
 {% for profile in profiles %}
-{% with c=profile.character r=profile.reputation m=profile.metrics %}
+{% with c=profile.character m=profile.metrics %}
 <div class="char-block">
 
     {# --- Collapsed compact row (click to expand; detail lazy-loaded) --- #}
     <div class="char-summary" role="button" tabindex="0" aria-expanded="false">
         <img class="cs-portrait" src="https://images.evetech.net/characters/{{ c.id }}/portrait?size=64" alt="">
         <div class="cs-id">
-            <div class="cs-name">{{ c.name }}
-                <span class="tag {{ r.threat_class }}">{{ r.threat_label }} {{ r.danger_ratio }}%</span>
+            <div class="cs-name">
+                {# Threat badge hidden: the ratio answers "will he win", not "will he engage" - see TODO.md #}
                 <span class="tag {{ c.sec_class }}">{{ c.sec_status }}</span>
+                <a href="{{ c.zkill_url }}" target="_blank" rel="noopener">{{ c.name }}</a>
+                <span class="muted" title="character age">{{ c.age }}</span>
+                <span class="cs-aff">
+                    <span class="org">{% if c.corporation_id %}<img src="https://images.evetech.net/corporations/{{ c.corporation_id }}/logo?size=32" alt="">{% endif %}{{ c.corporation }}</span>
+                    <span class="org">{% if c.alliance_id %}<img src="https://images.evetech.net/alliances/{{ c.alliance_id }}/logo?size=32" alt="">{% endif %}{{ c.alliance }}</span>
+                </span>
             </div>
-            <div class="cs-aff">
-                <img src="https://images.evetech.net/corporations/{{ c.corporation_id }}/logo?size=32" alt=""> {{ c.corporation }}
-                <img src="https://images.evetech.net/alliances/{{ c.alliance_id }}/logo?size=32" alt=""> {{ c.alliance }}
+            <div class="cs-spaceline">
+                <span class="cs-seg cs-space"><span class="lab">space</span>{% for sp in profile.space %}<span class="sp-count filterable" data-filter="space" data-value="{{ sp.name }}"><span class="dot {{ sp.cls }}"></span>{{ sp.abbr }} {{ sp.pct }}%</span>{% if not forloop.last %} · {% endif %}{% endfor %}</span>
             </div>
         </div>
         <div class="cs-stats">
@@ -22,14 +26,13 @@
             <div class="cs-chip"><span class="v">{{ m.solo_pct }}%</span><span class="k">solo</span></div>
             <div class="cs-chip"><span class="v">{{ m.gang_pct }}%</span><span class="k">gang</span></div>
             <div class="cs-chip"><span class="v">{{ m.avg_gang }}</span><span class="k">avg gang</span></div>
-            <div class="cs-chip"><span class="v">{{ m.fw_pct }}%</span><span class="k">fw</span></div>
-            <div class="cs-chip"><span class="v">{{ m.stealth_pct }}%</span><span class="k">stealth</span></div>
-            <div class="cs-chip"><span class="v">{{ m.isk_destroyed }}</span><span class="k">ISK</span></div>
-            <div class="cs-chip"><span class="v">{% if target_filter %}<span class="na" title="efficiency needs losses, which aren't filtered by target">—</span>{% else %}{{ m.isk_eff }}%{% endif %}</span><span class="k">eff</span></div>
+            <div class="cs-chip" title="share of kills where this pilot also killed the victim's pod"><span class="v">{{ m.pod_pct }}%</span><span class="k">pod</span></div>
+            <div class="cs-chip cs-stealth"><span class="v">{{ m.stealth_pct }}%</span><span class="k">stealth</span></div>
+            <div class="cs-chip" title="{{ m.warzone_title }}"><span class="v">{{ m.warzone_pct }}%</span><span class="k">warzone</span></div>
+            {# ISK and eff chips hidden while the store has no ISK values - see TODO.md #}
         </div>
         <i class="bi bi-chevron-down expand-ind"></i>
         <div class="cs-row2">
-            <span class="cs-seg cs-space"><span class="lab">space</span>{% for sp in profile.space %}<span class="sp-count"><span class="dot {{ sp.cls }}"></span>{{ sp.abbr }} {{ sp.pct }}%</span>{% if not forloop.last %} · {% endif %}{% endfor %}</span>
             <span class="cs-seg cs-ships"><span class="lab">ships</span>{% for sh in profile.ships_by_class %}<span{% if sh.is_stealth %} class="stealthname"{% endif %}>{{ sh.name }} {{ sh.pct }}%</span>{% if not forloop.last %} · {% endif %}{% empty %}<span class="muted">—</span>{% endfor %}</span>
             <span class="cs-seg cs-targets"><span class="lab">targets</span>{% for t in profile.targets %}<span class="filterable" data-filter="target" data-value="{{ t.name }}">{{ t.name }} {{ t.pct }}%</span>{% if not forloop.last %} · {% endif %}{% endfor %}</span>
         </div>
@@ -39,4 +42,9 @@
     <div class="char-detail" data-char-id="{{ c.id }}" data-loaded="0"></div>
 </div>
 {% endwith %}
+{% empty %}
+<div class="empty-state">
+    <i class="bi bi-clipboard"></i>
+    Press <strong>Analyze</strong>, or paste a local scan anywhere on this page.
+</div>
 {% endfor %}

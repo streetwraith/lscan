@@ -1,0 +1,17 @@
+{% if hulls %}
+<div class="tgt-scroll">
+<table class="table is-narrow tgt-hulls">
+    <tbody>
+        {% for h in hulls %}
+        <tr>
+            <td><span class="ship-cell filterable" data-filter="prey" data-value="{{ h.name }}">{% if h.type_id %}<img class="ship-icon" src="https://images.evetech.net/types/{{ h.type_id }}/icon?size=32" alt="" loading="lazy">{% else %}<span class="ship-icon is-blank"></span>{% endif %}{{ h.name }}</span></td>
+            <td>{{ h.kills }}</td>
+            <td><span class="muted">{{ h.pct }}% of {{ bucket|lower }}</span></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+{% else %}
+<div class="empty-state">No {{ bucket|lower }} killed in this window.</div>
+{% endif %}
