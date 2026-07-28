@@ -100,16 +100,22 @@ tests/                # pytest-django behavioural tests for the view
   icon, check the name exists in the pinned release - `icons.getbootstrap.com` documents a
   newer one.
 - **Analytics is same-origin, and that is deliberate** (added 2026-07-28). `base.html` loads
-  `<script defer src="/v.js" data-website-id="...">` - a **relative** path, so it does not
+  `<script defer src="/v" data-website-id="...">` - a **relative** path, so it does not
   breach the no-CDN rule above: nothing third-party is contacted and no visitor IP leaks to
   another vendor. Traffic goes to our **self-hosted Umami** on the `horizon` box, reached
   because Traefik routes two paths on this app's own hostname straight to the umami
-  container: `GET /v.js` (tracker) and `POST /e/api/send` (collect). **Nothing in this repo
+  container: `GET /v` (tracker) and `POST /e/api/send` (collect). **Nothing in this repo
   implements those two routes** - grep and you will not find them; they are Traefik labels on
   the umami app, recorded in the infra repo (`umami.md`, `coolify.md`).
   - The website id is a **public** identifier (it ships in the HTML), not a secret.
-  - ⚠️ **`/v.js` and `/e/` are reserved at the URL root.** Do not add app routes there or you
+  - ⚠️ **`/v` and `/e/` are reserved at the URL root.** Do not add app routes there or you
     will shadow analytics - Traefik matches those before Django ever sees the request.
+  - ⚠️ **The tracker path is extensionless on purpose - do not "fix" it to `/v.js`.** The same
+    tracker is also proxied from a Cloudflare Pages site, and there a bare path ending in an
+    asset-like extension gets served by Pages' static-asset handler instead of the proxy at some
+    edge locations, returning 404 and silently losing those visitors. Traefik here is not
+    affected, but both sites deliberately use the same path so there is one shape to reason
+    about. Evidence is in the infra repo (`umami.md`).
   - ⚠️ **The two paths are coordinated with the collector**, which serves them via its
     `TRACKER_SCRIPT_NAME` / `COLLECT_API_ENDPOINT` settings; changing one side alone silently
     stops collection. They are deliberately bland (no `analytics`/`umami`/`track`) so filter
