@@ -172,7 +172,9 @@ def _build_ships(fk: list[Killmail]) -> tuple[list[dict[str, Any]], list[dict[st
             "kills": cnt,
             "pct": _pct(cnt, n),
         }
-        for name, cnt in Counter(k["ship"] for k in fk).most_common(_TOP_SHIPS)
+        # Unbounded, like `build_target_hulls`: this is the expanded drill-down, and cutting it
+        # at _TOP_SHIPS hid hulls that the stealth chip and the class row above it still counted.
+        for name, cnt in Counter(k["ship"] for k in fk).most_common()
     ]
     # a class counts as stealth only if every one of its kills was a covert fit
     stealth_class: dict[str, bool] = {}

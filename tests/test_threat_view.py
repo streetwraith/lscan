@@ -411,6 +411,21 @@ def test_the_ship_filter_agrees_with_the_ships_flown_table() -> None:
     assert build_profile(entry, "365", {"ship": top["name"]}, TODAY)["metrics"]["kills"] == top["kills"]
 
 
+def test_the_ships_flown_table_hides_no_hull_the_summary_counted() -> None:
+    """The expanded drill-down must list every hull the blocks above it already counted.
+
+    A top-N cut here left the stealth chip and the class row reporting hulls - covert ones
+    especially, since they sit in the tail - that the table itself never showed.
+    """
+    entry = CHARACTERS[0]
+    profile = build_profile(entry, "365", {}, TODAY)
+    hulls = profile["ships_flown"]
+    assert len(hulls) > 8, "the fixture needs a long enough hull tail to catch a top-N cut"
+
+    assert sum(h["kills"] for h in hulls) == profile["metrics"]["kills"]
+    assert {h["group"] for h in hulls} >= {c["name"] for c in profile["ships_by_class"]}
+
+
 def test_names_over_the_cap_are_reported_not_silently_dropped() -> None:
     """Pasting appends, so the cap is easy to reach - it must not lose pilots quietly."""
     names = "%0A".join(f"Pilot{i}" for i in range(MAX_CHARACTERS + 3))
