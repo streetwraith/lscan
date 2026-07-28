@@ -19,17 +19,6 @@ from .profile_service import BUCKET_ORDER, FILTER_KEYS, build_all, build_profile
 from .throttle import allow_lookup
 from .windows import DEFAULT_WINDOW, WINDOW_BTN, WINDOW_LABELS, WINDOWS
 
-# Pilots pre-filled into the paste box, picked from the dev store to exercise different
-# shapes: a busy lowsec camper, a pilot spread across null/low/wormhole/Pochven, a solo
-# hunter enlisted in a militia, a low-volume pilot, and one with no killmails at all.
-DEFAULT_CHARACTER_NAMES: list[str] = [
-    "Jaja Colene",
-    "Aelen Annages",
-    "Delanhunt",
-    "ALL BLACK",
-    "Lord AARP",
-]
-
 
 def healthz(request: HttpRequest) -> HttpResponse:
     """Liveness probe: is the process up, and can it reach Postgres.
@@ -64,7 +53,7 @@ def _pasted_names(request: HttpRequest) -> tuple[list[str], int]:
     # cap at this point would bound nothing and would under-report `dropped`.
     raw = request.GET.get("names", "")
     if not raw.strip():
-        return [], 0  # nothing asked for yet - the box is pre-filled, but we profile nobody
+        return [], 0  # nothing asked for yet - the box is empty and we profile nobody
     parsed = (part.strip() for line in raw.splitlines() for part in line.split(","))
     unique = list(dict.fromkeys(p for p in parsed if p))
     return unique[:MAX_CHARACTERS], max(0, len(unique) - MAX_CHARACTERS)
@@ -73,15 +62,14 @@ def _pasted_names(request: HttpRequest) -> tuple[list[str], int]:
 def _base_context(names: list[str], window: str, filters: dict[str, str]) -> dict[str, Any]:
     """Everything both the page chrome and the error page need. One place, so the two
     render paths cannot drift apart."""
-    shown = names or DEFAULT_CHARACTER_NAMES
     return {
         "windows": WINDOWS,
         "window_labels": WINDOW_LABELS,
         "window_btn": WINDOW_BTN,
         "window": window,
         "filters": filters,
-        "names_param": ",".join(shown),
-        "names_text": "\n".join(shown),
+        "names_param": ",".join(names),
+        "names_text": "\n".join(names),
     }
 
 

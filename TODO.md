@@ -17,7 +17,7 @@ and their chips are hidden in `_char_blocks.html`; the `fw` chip was repurposed:
   reports at `/fw/systems/`, with the owning militia in the tooltip. The set is cached like
   other reference data (`esi.warzone_systems`, 24h blob + process-local memo), so the read is
   a dict membership test on `solar_system_id` - no query, no join, one ESI call a day. It
-  discriminates sharply: measured 99.7% / 100% / 1.5% / 0% across the four preset pilots.
+  discriminates sharply: measured 99.7% / 100% / 1.5% / 0% across four sample pilots.
 
   Be precise about what it means: **"inside the warzone" is not "under FW rules"** - two
   neutrals shooting each other in Tama count here. That is why the chip says *warzone*. The

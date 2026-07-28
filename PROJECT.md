@@ -108,10 +108,9 @@ tests/                # pytest-django behavioural tests for the view
 
 ## Dev data note
 
-`views.DEFAULT_CHARACTER_NAMES` pre-fills the paste box with five real pilots chosen
-from the dev store to exercise different shapes: a busy lowsec camper, a pilot spread
-across null/low/wormhole/Pochven, a solo hunter enlisted in a militia, a low-volume
-pilot, and one with no killmails at all (the empty state).
+The paste box starts **empty** - the app ships no default pilot list. It carried five real
+pilots from the dev store during development; they were removed because shipping named
+players as a landing-page default is not something a public tool should do.
 
 `tests/mock_data.py` is **only a test fixture** - it produces the same dict shape the
 store returns so `profile_service` can be exercised without a database, and it builds its

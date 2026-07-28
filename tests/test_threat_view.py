@@ -19,15 +19,16 @@ from pytest_django.fixtures import SettingsWrapper
 from intel.esi import Character, EsiRateLimited, EsiUnavailable
 from intel.killmail_store import MAX_CHARACTERS, ScanTooLarge
 from intel.profile_service import build_all, build_profile, build_target_hulls
-from intel.views import DEFAULT_CHARACTER_NAMES
 from intel.windows import DEFAULT_WINDOW, UNAVAILABLE, WINDOWS
 from mock_data import CHARACTERS, TODAY
 
 UNKNOWN_NAME = "Nobody At All"
-_IDS = {name: 1000 + i for i, name in enumerate(DEFAULT_CHARACTER_NAMES)}
+# A scan the stubbed resolver can answer. Arbitrary - the app ships no default pilot list.
+SCAN_NAMES = ["Jaja Colene", "Aelen Annages", "ALL BLACK", "Lord AARP"]
+_IDS = {name: 1000 + i for i, name in enumerate(SCAN_NAMES)}
 # intel.js sends the active scan on every fragment request; without it the scan is empty
 # and a character is legitimately "not in the current scan".
-SCAN = "names=" + "%2C".join(n.replace(" ", "%20") for n in DEFAULT_CHARACTER_NAMES)
+SCAN = "names=" + "%2C".join(n.replace(" ", "%20") for n in SCAN_NAMES)
 
 
 def _fake_entries(
@@ -124,7 +125,7 @@ def test_blocks_fragment_renders() -> None:
 
 
 def test_detail_fragment_renders() -> None:
-    cid = _IDS[DEFAULT_CHARACTER_NAMES[0]]
+    cid = _IDS[SCAN_NAMES[0]]
     resp = Client().get(f"/?fragment=detail&char={cid}&{SCAN}")
     assert resp.status_code == 200
 
@@ -279,9 +280,7 @@ def test_cached_browsing_is_never_throttled() -> None:
     assert codes == [200, 200, 200, 200]
 
 
-@pytest.mark.parametrize(
-    "path", ["/", "/?" + SCAN, f"/?fragment=detail&char={_IDS[DEFAULT_CHARACTER_NAMES[0]]}&{SCAN}"]
-)
+@pytest.mark.parametrize("path", ["/", "/?" + SCAN, f"/?fragment=detail&char={_IDS[SCAN_NAMES[0]]}&{SCAN}"])
 def test_no_template_comment_leaks_into_the_rendered_page(path: str) -> None:
     """Django's {# #} is single-line only; a wrapped one renders as visible text.
 
@@ -316,7 +315,7 @@ def test_target_drilldown_honours_the_active_filters() -> None:
 
 
 def test_targets_fragment_renders_and_validates_the_bucket() -> None:
-    cid = _IDS[DEFAULT_CHARACTER_NAMES[0]]
+    cid = _IDS[SCAN_NAMES[0]]
     ok = Client().get(f"/?fragment=targets&char={cid}&bucket=Explorers&{SCAN}")
     assert ok.status_code == 200
     assert b"tgt-hulls" in ok.content or b"empty-state" in ok.content
@@ -325,7 +324,7 @@ def test_targets_fragment_renders_and_validates_the_bucket() -> None:
 
 
 def test_detail_card_offers_the_drilldown_affordance() -> None:
-    cid = _IDS[DEFAULT_CHARACTER_NAMES[0]]
+    cid = _IDS[SCAN_NAMES[0]]
     body = Client().get(f"/?fragment=detail&char={cid}&{SCAN}").content
     assert b'class="tgt-row' in body
     assert b'class="tgt-detail"' in body
@@ -436,13 +435,21 @@ def test_duplicate_names_collapse_before_the_cap_is_applied() -> None:
     assert b"list is capped at" not in resp.content
 
 
-def test_landing_page_pre_fills_the_box_but_profiles_nobody() -> None:
+def test_landing_page_shows_an_empty_box_and_profiles_nobody() -> None:
     """No ?names= means nothing has been asked for yet - show the prompt, not results."""
     body = Client().get("/").content
     assert b"char-summary" not in body, "must not profile pilots before being asked"
     assert b"Press <strong>Analyze</strong>" in body
-    for name in DEFAULT_CHARACTER_NAMES:
-        assert name.encode() in body, "the box should still be pre-filled"
+    assert b'<textarea class="textarea" id="names" rows="3" placeholder' in body
+    assert b"</textarea>" in body
+    assert b'data-names=""' in body, "no scan is active yet"
+
+
+def test_the_paste_box_is_empty_until_names_are_asked_for() -> None:
+    """It used to ship a hardcoded pilot list; the box must start blank."""
+    body = Client().get("/").content.decode()
+    box = body.split('id="names"', 1)[1].split(">", 1)[1].split("</textarea>", 1)[0]
+    assert box == "", f"expected an empty textarea, got {box!r}"
 
 
 def test_landing_page_does_no_identity_lookups() -> None:
