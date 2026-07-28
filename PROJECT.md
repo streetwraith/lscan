@@ -111,11 +111,12 @@ tests/                # pytest-django behavioural tests for the view
   - ⚠️ **`/v` and `/e/` are reserved at the URL root.** Do not add app routes there or you
     will shadow analytics - Traefik matches those before Django ever sees the request.
   - ⚠️ **The tracker path is extensionless on purpose - do not "fix" it to `/v.js`.** The same
-    tracker is also proxied from a Cloudflare Pages site, and there a bare path ending in an
-    asset-like extension gets served by Pages' static-asset handler instead of the proxy at some
-    edge locations, returning 404 and silently losing those visitors. Traefik here is not
-    affected, but both sites deliberately use the same path so there is one shape to reason
-    about. Evidence is in the infra repo (`umami.md`).
+    tracker is proxied from a Cloudflare Pages site too, and there `/v.js` returned 404 at some
+    edge locations, silently losing those visitors. The exact cause was never confirmed (the
+    leading alternative is that Pages activates Function routes gradually after a deploy), but
+    both sites deliberately use the same path so there is one shape to reason about. Traefik here
+    routes either path correctly, so this costs lscan nothing. Full evidence and the operational
+    lessons are in the infra repo (`umami.md`).
   - ⚠️ **The two paths are coordinated with the collector**, which serves them via its
     `TRACKER_SCRIPT_NAME` / `COLLECT_API_ENDPOINT` settings; changing one side alone silently
     stops collection. They are deliberately bland (no `analytics`/`umami`/`track`) so filter
