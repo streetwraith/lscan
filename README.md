@@ -1,6 +1,6 @@
 # lscan
 
-PVP threat profiling for EVE Online. Paste character names, get a per-pilot
+PvP threat profiling for EVE Online. Paste character names, get a per-pilot
 threat profile built from their killmails - what they kill, where, and how,
 across selectable time windows, with click-to-filter.
 

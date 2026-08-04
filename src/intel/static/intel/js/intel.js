@@ -186,10 +186,11 @@
     // `append` keeps what is already listed and adds only names not already there, so a
     // second paste grows the scan instead of replacing it. Case-insensitive: EVE names are
     // unique regardless of case, and the in-game copy preserves the player's own casing.
+    // Appended names go in front so the pilots just pasted are the ones on screen.
     function applyNames(lines, append) {
         var incoming = namesFrom(lines);
         if (!incoming.length) { return false; }
-        var merged = append && state.names ? state.names.split(',').concat(incoming) : incoming;
+        var merged = append && state.names ? incoming.concat(state.names.split(',')) : incoming;
         var seen = {};
         var out = [];
         merged.forEach(function (n) {

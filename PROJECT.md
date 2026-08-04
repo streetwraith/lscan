@@ -2,7 +2,7 @@
 
 ## What this is
 
-A standalone EVE Online PVP threat-profiling tool. Paste a list of pilot names from
+A standalone EVE Online PvP threat-profiling tool. Paste a list of pilot names from
 the in-game local chat and get a per-pilot threat profile - what they kill, where, in
 what, and how - across selectable time windows, with click-to-filter on every
 dimension. It began as the `intel` demo app inside the `helion` project and now runs on

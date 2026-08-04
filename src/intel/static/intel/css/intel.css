@@ -67,6 +67,8 @@ td.loc i { color: var(--bulma-text-weak); margin-right: 4px; opacity: 0.7; }
 .navbar-end > .navbar-item,
 .navbar-end > .navbar-item > .navbar-link { padding-top: 0.25rem; padding-bottom: 0.25rem; }
 .navbar-burger { height: 2.5rem; width: 2.5rem; }
+/* The brand is a link back to an empty scan, but it should read as the title, not a link. */
+.brand-home, .brand-home:hover { color: inherit; display: inline-flex; align-items: center; }
 
 /* CCP's licence requires a proprietary notice wherever their material is shown, and we
    render portraits, corp/alliance logos and hull icons throughout - keep it unobtrusive */

@@ -1,7 +1,7 @@
 [project]
 name = "lscan"
 version = "0.1.0"
-description = "PVP threat profiling for EVE Online - server-rendered Django monolith"
+description = "PvP threat profiling for EVE Online - server-rendered Django monolith"
 requires-python = ">=3.13"
 dependencies = [
     "django>=5.2,<5.3",
