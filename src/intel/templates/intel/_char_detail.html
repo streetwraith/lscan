@@ -69,7 +69,7 @@
         <tbody>
             {% for sh in profile.ships_flown %}
             <tr>
-                <td><span class="filterable ship-cell{% if sh.is_stealth %} stealthname{% endif %}" data-filter="ship" data-value="{{ sh.name }}"{% if sh.is_stealth %} title="covert-capable hull"{% endif %}>{% if sh.type_id %}<img class="ship-icon" src="https://images.evetech.net/types/{{ sh.type_id }}/icon?size=32" alt="" loading="lazy">{% else %}<span class="ship-icon is-blank"></span>{% endif %}{{ sh.name }}</span></td>
+                <td><span class="filterable ship-cell{% if sh.is_stealth %} stealthname{% endif %}" data-filter="ship" data-value="{{ sh.name }}"{% if sh.is_stealth %} title="stealth hull: covert cloak or no directional-scan signature"{% endif %}>{% if sh.type_id %}<img class="ship-icon" src="https://images.evetech.net/types/{{ sh.type_id }}/icon?size=32" alt="" loading="lazy">{% else %}<span class="ship-icon is-blank"></span>{% endif %}{{ sh.name }}</span></td>
                 <td class="class-col">{{ sh.group }}</td>
                 <td>{{ sh.kills }} <span class="muted">({{ sh.pct }}%)</span></td>
                 <td class="share-col"><progress class="progress is-link is-small" value="{{ sh.pct }}" max="100">{{ sh.pct }}%</progress></td>

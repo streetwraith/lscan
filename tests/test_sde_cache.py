@@ -10,7 +10,7 @@ import pytest
 
 from intel import sde_cache
 
-# Only 49 of ~52k hulls are stealth-capable, so most ids legitimately have no row - the
+# Only 53 of ~52k hulls are stealth hulls, so most ids legitimately have no row - the
 # lookup must treat that as an answer, not as a reason to go back to the database.
 _TABLE: dict[int, Any] = {670: True, 12032: True}
 
