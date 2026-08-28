@@ -23,13 +23,23 @@ Classic Django monolith, **server-side rendered, no SPA/API split**.
 Interactivity is HTML-over-the-wire: the view returns full pages or HTML
 fragments, and a small vanilla-JS loader swaps them in.
 
-- `GET /` -> full threat page (`intel/threat.html`).
-- `GET /?fragment=blocks&window=..&<filters>` -> just the compact per-pilot rows
+- `GET /` -> the empty threat page (`intel/threat.html`).
+- `GET /<names>` and `GET /<names>/<window>` -> the same page with a scan on it.
+- `GET /<names>?fragment=blocks&<filters>` -> just the compact per-pilot rows
   (swapped on every window/filter change).
-- `GET /?fragment=detail&char=ID` -> one pilot's heavy detail card (chart +
+- `GET /<names>?fragment=detail&char=ID` -> one pilot's heavy detail card (chart +
   tables), lazy-loaded the first time a row is expanded.
-- `GET /?fragment=targets&char=ID&bucket=NAME` -> the exact hulls behind one target
+- `GET /<names>?fragment=targets&char=ID&bucket=NAME` -> the exact hulls behind one target
   category, lazy-loaded when that row is expanded inside a detail card.
+- `GET /robots.txt`, `GET /healthz` -> plain text; both are declared before the
+  catch-all so neither is read as a scan for a pilot of that name.
+- `GET /favicon.ico` -> permanent redirect to the static file. Browsers still ask for it
+  at the root and the names converter cannot match a dot.
+- `GET /<names>/` (trailing slash) -> permanent redirect to the slashless form.
+  `APPEND_SLASH` only ever adds a slash, so removing one needs its own route.
+
+Every `?fragment=` response carries `X-Robots-Tag: noindex` - a fragment is a bare row
+list with no `<head>`, and nothing links to one, but the URLs are guessable.
 
 Click-to-filter covers `region`, `const`, `system`, `ship` (hull flown), `space`
 (the displayed band, so Pochven folds into "Others"), `target` (victim category) and
@@ -37,7 +47,28 @@ Click-to-filter covers `region`, `const`, `system`, `ship` (hull flown), `space`
 Expanded cards and the open drill-down are restored after a filter swap, so clicking
 something inside a card does not destroy what you are looking at.
 
-Window + active filters live in the URL query string (shareable, survives swaps).
+### The scan URL
+
+The scan is the **path**; the filters stay in the query string. `/Moe_Sten,Ummae/30`
+is a scan of two pilots over 30 days, and `?space=Wormhole` on top of it is view state.
+The split is what makes a scan indexable: the path is the identity of the page, so it
+is what the canonical points at, and the filters do not multiply it.
+
+Every character an EVE name can hold is legal unencoded in a path segment except the
+space, so nothing needs percent-encoding: the comma separates names as-is, and the
+space becomes an underscore. `+` and a literal `%20` are accepted on the way in too, so
+a hand-typed URL works, but `intel/scan_url.py` always writes the underscore spelling
+back out - one scan, one canonical. The window is dropped when it is the default (90),
+for the same reason, and the names are re-spelled the way ESI spells them, because ESI
+resolves a name case-insensitively and every spelling is therefore a live URL.
+
+⚠️ **Names in the path make every URL a candidate scan.** `urls.py` therefore matches a
+tight character class (`scan_url.NAMES_RE`): anything that cannot be an EVE name 404s.
+Without that, `/wp-login.php` is a crawlable 200 that also spends an ESI lookup.
+
+Links from before this scheme (`/?names=..&window=..`) still work - the view answers
+them with a permanent redirect into the path form, keeping any filters.
+
 `static/intel/js/intel.js` does delegated click handling + fetch/swap; there is
 deliberately no framework. (htmx is a natural future swap for this hand-rolled
 loader but was kept vanilla for the initial landing.)
@@ -74,6 +105,7 @@ src/
   intel/            # the (only) app
     views.py                # threat_profile: full page + blocks/detail/targets fragments
     profile_service.py      # THE aggregation (build_profile / build_all)
+    scan_url.py             # the scan path: name <-> segment, and the canonical spelling
     killmail_store.py       # read-only reader for the shared eve Postgres (live source)
     esi.py                  # ESI identity (names/affiliation/tickers/sec), Redis-cached
     sde_cache.py            # static id->name/bucket lookups in Redis (keeps queries join-free)

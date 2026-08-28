@@ -220,8 +220,7 @@ td.loc i { color: var(--bulma-text-weak); margin-right: 4px; opacity: 0.7; }
     /* Vertical space is cheap on a phone, horizontal is not. */
     .tgt-scroll { max-height: 11rem; }
 
-    /* Brand: drop the tagline, keep the attribution but shrink it. */
-    .brand-tagline { display: none; }
+    /* Brand: keep the attribution but shrink it. */
     .brand-by { font-size: 0.6rem; margin-left: 0.4rem !important; }
 
     .lscan-footer { font-size: 0.62rem; }

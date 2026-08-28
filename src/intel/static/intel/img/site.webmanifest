@@ -1,0 +1,13 @@
+{
+  "name": "lscan - EVE Online local scan",
+  "short_name": "lscan",
+  "description": "Paste an EVE Online local chat or fleet list and see who actually hunts.",
+  "icons": [
+    { "src": "/static/intel/img/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/static/intel/img/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png" }
+  ],
+  "theme_color": "#4258e0",
+  "background_color": "#1c1c20",
+  "display": "browser",
+  "start_url": "/"
+}

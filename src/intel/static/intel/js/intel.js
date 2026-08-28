@@ -4,7 +4,8 @@
 //    lightweight #char-blocks fragment (compact rows only) — fast, no reload.
 //  * each character's heavy detail (chart + tables) is loaded lazily the first
 //    time its row is expanded, and reset whenever the filter/window changes.
-//  * window + filters live in the URL so the view is shareable.
+//  * the scan (names + window) is the URL path and the filters are the query
+//    string, so the view is shareable and the path is what gets indexed.
 (function () {
     var intel = document.querySelector('.intel');
     if (!intel) {
@@ -12,7 +13,7 @@
     }
     var blocks = document.getElementById('char-blocks');
     var filterBar = document.getElementById('filter-bar');
-    var path = window.location.pathname;
+    var defaultWindow = intel.dataset.defaultWindow;
 
     var seed = document.getElementById('intel-filters');
     var state = {
@@ -21,16 +22,31 @@
         filters: seed ? JSON.parse(seed.textContent) : {}
     };
 
-    function params(extra) {
-        var p = ['window=' + encodeURIComponent(state.window)];
-        if (state.names) {
-            p.push('names=' + encodeURIComponent(state.names));
+    // Underscore for the space and a bare comma between names: both are legal in a path
+    // unencoded, so nothing here needs encodeURIComponent. Dropping the default window
+    // keeps one scan on one URL - the one the canonical points at.
+    function scanPath() {
+        if (!state.names) {
+            return '/';
         }
+        var seg = state.names.split(',').map(function (n) {
+            return n.trim().replace(/ /g, '_');
+        }).join(',');
+        return '/' + seg + (state.window === defaultWindow ? '' : '/' + state.window);
+    }
+
+    function params(extra) {
+        var p = [];
         Object.keys(state.filters).forEach(function (k) {
             p.push(k + '=' + encodeURIComponent(state.filters[k]));
         });
         Object.keys(extra || {}).forEach(function (k) { p.push(k + '=' + encodeURIComponent(extra[k])); });
         return p.join('&');
+    }
+
+    function url(extra) {
+        var q = params(extra);
+        return scanPath() + (q ? '?' + q : '');
     }
 
     function renderChips() {
@@ -115,7 +131,7 @@
         var open = openState();
         var known = highlightNew ? charIdSet() : null;
         blocks.classList.add('loading');
-        fetch(path + '?fragment=blocks&' + params())
+        fetch(url({ fragment: 'blocks' }))
             .then(function (r) { return r.text(); })
             .then(function (html) {
                 blocks.innerHTML = html;
@@ -124,7 +140,7 @@
                 restoreOpen(open);
                 renderChips();
                 syncWindowButtons();
-                history.replaceState(null, '', path + '?' + params());
+                history.replaceState(null, '', url());
             })
             .catch(function () { blocks.classList.remove('loading'); });
     }
@@ -132,7 +148,7 @@
     function loadDetail(detail) {
         detail.dataset.loaded = 'loading';
         detail.innerHTML = '<div class="empty-state"><span class="css-spinner"></span> loading…</div>';
-        return fetch(path + '?' + params({ fragment: 'detail', char: detail.dataset.charId }))
+        return fetch(url({ fragment: 'detail', char: detail.dataset.charId }))
             .then(function (r) { return r.text(); })
             .then(function (html) { detail.innerHTML = html; detail.dataset.loaded = '1'; })
             .catch(function () { detail.dataset.loaded = '0'; detail.innerHTML = ''; });
@@ -163,7 +179,7 @@
         var cell = detail.querySelector('td');
         detail.dataset.loaded = 'loading';
         cell.innerHTML = '<div class="empty-state"><span class="css-spinner"></span> loading…</div>';
-        fetch(path + '?' + params({ fragment: 'targets', char: card.dataset.charId, bucket: row.dataset.bucket }))
+        fetch(url({ fragment: 'targets', char: card.dataset.charId, bucket: row.dataset.bucket }))
             .then(function (r) { return r.text(); })
             .then(function (html) { cell.innerHTML = html; detail.dataset.loaded = '1'; })
             .catch(function () { detail.dataset.loaded = '0'; cell.innerHTML = ''; });

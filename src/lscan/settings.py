@@ -71,6 +71,10 @@ CACHES = {"default": {"BACKEND": "django.core.cache.backends.redis.RedisCache", 
 # ESI (EVE public API) - identity data the killmail store has no source for.
 # The compatibility date is pinned deliberately: omitting the header makes ESI serve the
 # OLDEST supported behaviour (verified: it answers with X-Compatibility-Date: 2020-01-01).
+# Absolute origin for the canonical link and the Open Graph tags. They must be absolute
+# URLs, and a request cannot supply one safely - `Host` is caller-controlled.
+SITE_URL = env("SITE_URL", default="https://lscan.entropiadev.com").rstrip("/")
+
 ESI_BASE_URL = env("ESI_BASE_URL", default="https://esi.evetech.net")
 ESI_COMPATIBILITY_DATE = env("ESI_COMPATIBILITY_DATE", default="2025-08-26")
 # CCP asks for contact info so they can reach you before banning; see ESI best practices.

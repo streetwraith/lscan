@@ -15,8 +15,26 @@
             } catch (e) {}
         })();
     </script>
-    <title>{% block title %}lscan{% endblock %}</title>
+    <title>{% block title %}{{ page_title }}{% endblock %}</title>
+    <meta name="description" content="{{ page_description }}">
+    <link rel="canonical" href="{{ canonical }}">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="lscan">
+    <meta property="og:title" content="{{ page_title }}">
+    <meta property="og:description" content="{{ page_description }}">
+    <meta property="og:url" content="{{ canonical }}">
+    <meta property="og:image" content="{{ og_image }}">
+    <meta property="og:image:width" content="2400">
+    <meta property="og:image:height" content="1260">
+    {# X and the rest read the og: tags for title/description, so only the card type is needed. #}
+    <meta name="twitter:card" content="summary_large_image">
+    {# The SVG follows the tab bar's colour scheme where supported; the rest are raster fallbacks. The 16px file is deliberately a tighter crop of the same mark - the three radar arcs turn to mush below about 24px. #}
     <link rel="icon" type="image/svg+xml" href="{% static 'intel/img/favicon.svg' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'intel/img/favicon-32x32.png' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'intel/img/favicon-16x16.png' %}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'intel/img/apple-touch-icon.png' %}">
+    <link rel="manifest" href="{% static 'intel/img/site.webmanifest' %}">
+    <meta name="theme-color" content="#4258e0">
     <link rel="stylesheet" href="{% static 'intel/css/vendor/bulma.min.css' %}">
     <link rel="stylesheet" href="{% static 'intel/css/vendor/bootstrap-icons.min.css' %}">
     {% block css %}{% endblock %}
@@ -35,7 +53,6 @@
                         <span class="icon mr-2"><i class="bi bi-radar"></i></span>
                         <span class="has-text-weight-semibold">lscan</span>
                     </a>
-                    <span class="brand-tagline has-text-weight-semibold ml-2 has-text-grey-light">PvP threat profiling</span>
                     <span class="brand-by is-size-7 ml-2 has-text-grey-light">by&nbsp;<a href="https://entropiadev.com" target="_blank" rel="noopener" class="has-text-grey-light is-underlined">entropiadev.com</a></span>
                 </span>
                 <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="lscan-navbar">

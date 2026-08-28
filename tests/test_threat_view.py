@@ -9,6 +9,7 @@ import datetime
 from collections.abc import Iterator
 from typing import Any
 from unittest.mock import patch
+from urllib.parse import urlencode
 
 import pytest
 from django.core.cache import cache
@@ -16,9 +17,10 @@ from django.db import OperationalError
 from django.test import Client
 from pytest_django.fixtures import SettingsWrapper
 
-from intel.esi import Character, EsiRateLimited, EsiUnavailable
+from intel.esi import Character, EsiRateLimited, EsiUnavailable, unknown_character
 from intel.killmail_store import MAX_CHARACTERS, ScanTooLarge
 from intel.profile_service import build_all, build_profile, build_target_hulls
+from intel.scan_url import scan_path
 from intel.windows import DEFAULT_WINDOW, UNAVAILABLE, WINDOWS
 from mock_data import CHARACTERS, TODAY
 
@@ -26,9 +28,13 @@ UNKNOWN_NAME = "Nobody At All"
 # A scan the stubbed resolver can answer. Arbitrary - the app ships no default pilot list.
 SCAN_NAMES = ["Jaja Colene", "Aelen Annages", "ALL BLACK", "Lord AARP"]
 _IDS = {name: 1000 + i for i, name in enumerate(SCAN_NAMES)}
-# intel.js sends the active scan on every fragment request; without it the scan is empty
-# and a character is legitimately "not in the current scan".
-SCAN = "names=" + "%2C".join(n.replace(" ", "%20") for n in SCAN_NAMES)
+
+
+def scan(names: list[str], window: str = DEFAULT_WINDOW, **query: object) -> str:
+    """A scan URL the way intel.js builds it: names and window in the path, filters and
+    fragment flags in the query string."""
+    path = scan_path(names, window)
+    return f"{path}?{urlencode({k: str(v) for k, v in query.items()})}" if query else path
 
 
 def _fake_entries(
@@ -45,9 +51,41 @@ def _fake_entries(
     ]
 
 
+# The two stubs below share one registry, because the real pair behaves that way:
+# /universe/ids/ matches whatever case you send, and /universe/names/ then answers with the
+# single canonical spelling. Ids are assigned per distinct name and never reused, so a test
+# cannot inherit another test's pilot just by running second.
+_ID_BY_LOWER: dict[str, int] = {name.lower(): cid for name, cid in _IDS.items()}
+_SPELLING: dict[int, str] = {cid: name for name, cid in _IDS.items()}
+
+
 def _fake_resolve(names: list[str]) -> dict[str, int]:
-    """Every pasted name resolves to a stable id, except one that never does."""
-    return {n: _IDS.get(n, 9000 + i) for i, n in enumerate(names) if n != UNKNOWN_NAME}
+    """Every pasted name resolves to a stable id, except one that never does.
+
+    Case-insensitive, the way ESI resolves names - which is what makes several spellings of
+    one pilot live URLs, and therefore what the canonical has to collapse.
+    """
+    out: dict[str, int] = {}
+    for name in names:
+        if name.lower() == UNKNOWN_NAME.lower():
+            continue
+        char_id = _ID_BY_LOWER.get(name.lower())
+        if char_id is None:
+            char_id = 9000 + len(_ID_BY_LOWER)
+            _ID_BY_LOWER[name.lower()] = char_id
+            _SPELLING[char_id] = name
+        out[name] = char_id
+    return out
+
+
+def _fake_characters(character_ids: list[int]) -> dict[int, Character]:
+    """Identity as ESI would return it - above all the canonical spelling of the name."""
+    out: dict[int, Character] = {}
+    for cid in character_ids:
+        char = unknown_character(cid)
+        char["name"] = _SPELLING.get(cid, str(cid))
+        out[cid] = char
+    return out
 
 
 @pytest.fixture(autouse=True)
@@ -55,7 +93,7 @@ def _stub_backends() -> Iterator[None]:
     with (
         patch("intel.views.load_entries", _fake_entries),
         patch("intel.views.resolve_character_names", _fake_resolve),
-        patch("intel.views.load_characters", lambda ids: {}),
+        patch("intel.views.load_characters", _fake_characters),
         # Names are resolved by the stub above, so nothing here would reach ESI - without
         # this the per-IP lookup throttle 429s any test that makes two requests in a second.
         patch("intel.views.uncached_character_names", lambda names: []),
@@ -120,29 +158,29 @@ def test_full_page_renders() -> None:
 
 
 def test_blocks_fragment_renders() -> None:
-    resp = Client().get("/?fragment=blocks&window=90")
+    resp = Client().get(scan([], "90", fragment="blocks"))
     assert resp.status_code == 200
 
 
 def test_detail_fragment_renders() -> None:
     cid = _IDS[SCAN_NAMES[0]]
-    resp = Client().get(f"/?fragment=detail&char={cid}&{SCAN}")
+    resp = Client().get(scan(SCAN_NAMES, fragment="detail", char=cid))
     assert resp.status_code == 200
 
 
 def test_detail_for_a_character_outside_the_scan_is_404() -> None:
-    resp = Client().get("/?fragment=detail&char=999999")
+    resp = Client().get(scan([], fragment="detail", char=999999))
     assert resp.status_code == 404
 
 
 def test_pasted_names_drive_which_characters_are_profiled() -> None:
-    resp = Client().get("/?names=Jaja%20Colene%0AALL%20BLACK")
+    resp = Client().get(scan(["Jaja Colene", "ALL BLACK"]))
     assert resp.status_code == 200
     assert b"Jaja Colene" in resp.content and b"ALL BLACK" in resp.content
 
 
 def test_unresolvable_name_is_reported_not_silently_dropped() -> None:
-    resp = Client().get(f"/?names=Jaja%20Colene%0A{UNKNOWN_NAME.replace(' ', '%20')}")
+    resp = Client().get(scan(["Jaja Colene", UNKNOWN_NAME]))
     assert resp.status_code == 200
     assert UNKNOWN_NAME.encode() in resp.content
     assert b"not found in EVE" in resp.content
@@ -151,8 +189,8 @@ def test_unresolvable_name_is_reported_not_silently_dropped() -> None:
 def test_recent_window_is_gone_and_default_is_90_days() -> None:
     assert "recent" not in WINDOWS
     assert DEFAULT_WINDOW == "90"
-    # an unknown window falls back to the default rather than erroring
-    assert Client().get("/?window=recent").status_code == 200
+    # an unknown window in a legacy query string falls back to the default rather than erroring
+    assert Client().get("/?window=recent")["Location"] == "/"
 
 
 def test_unavailable_metrics_are_placeholders() -> None:
@@ -198,7 +236,7 @@ def test_rate_limited_esi_is_reported_to_the_user() -> None:
 
 def test_fragment_requests_get_the_error_as_a_fragment() -> None:
     with patch("intel.views.resolve_character_names", side_effect=EsiRateLimited("budget")):
-        resp = Client().get("/?fragment=blocks")
+        resp = Client().get(scan([], fragment="blocks"))
     assert resp.status_code == 503
     assert b"ESI rate limits exceeded" in resp.content
     assert b"<textarea" not in resp.content, "fragment must not re-render the whole page"
@@ -208,7 +246,7 @@ def test_a_second_uncached_lookup_from_the_same_ip_is_throttled() -> None:
     """Seed the bucket rather than racing the clock: two real requests may straddle a second."""
     cache.add("rl:lookup:127.0.0.1", 1, 60)  # the key _client_ip builds for the test client
     with patch("intel.views.uncached_character_names", lambda names: list(names)):
-        resp = Client().get("/?names=Someone%20Else")
+        resp = Client().get(scan(["Someone Else"]))
     assert resp.status_code == 429
     assert b"Too many lookups" in resp.content
 
@@ -218,8 +256,8 @@ def test_the_throttle_ignores_x_forwarded_for(settings: SettingsWrapper) -> None
     settings.CLIENT_IP_HEADER = "CF-Connecting-IP"
     cache.add("rl:lookup:9.9.9.9", 1, 60)
     with patch("intel.views.uncached_character_names", lambda names: list(names)):
-        spoofed = Client().get("/?names=A", HTTP_CF_CONNECTING_IP="9.9.9.9", HTTP_X_FORWARDED_FOR="1.2.3.4")
-        elsewhere = Client().get("/?names=B", HTTP_CF_CONNECTING_IP="8.8.8.8")
+        spoofed = Client().get(scan(["Pilot Aaa"]), HTTP_CF_CONNECTING_IP="9.9.9.9", HTTP_X_FORWARDED_FOR="1.2.3.4")
+        elsewhere = Client().get(scan(["Pilot Bbb"]), HTTP_CF_CONNECTING_IP="8.8.8.8")
     assert spoofed.status_code == 429, "the forged header must not win over the trusted one"
     assert elsewhere.status_code == 200, "a different client keeps its own bucket"
 
@@ -229,7 +267,7 @@ def test_the_throttle_falls_back_to_remote_addr_when_no_proxy_is_configured(sett
     settings.CLIENT_IP_HEADER = ""
     cache.add("rl:lookup:127.0.0.1", 1, 60)
     with patch("intel.views.uncached_character_names", lambda names: list(names)):
-        resp = Client().get("/?names=A", HTTP_CF_CONNECTING_IP="9.9.9.9")
+        resp = Client().get(scan(["Pilot Aaa"]), HTTP_CF_CONNECTING_IP="9.9.9.9")
     assert resp.status_code == 429, "the header must be ignored entirely when unconfigured"
 
 
@@ -238,7 +276,7 @@ def test_a_blank_trusted_header_falls_through_to_remote_addr(settings: SettingsW
     settings.CLIENT_IP_HEADER = "CF-Connecting-IP"
     cache.add("rl:lookup:127.0.0.1", 1, 60)
     with patch("intel.views.uncached_character_names", lambda names: list(names)):
-        resp = Client().get("/?names=A", HTTP_CF_CONNECTING_IP="   ")
+        resp = Client().get(scan(["Pilot Aaa"]), HTTP_CF_CONNECTING_IP="   ")
     assert resp.status_code == 429
 
 
@@ -247,28 +285,32 @@ def test_a_header_that_is_not_an_address_is_not_trusted(settings: SettingsWrappe
     settings.CLIENT_IP_HEADER = "CF-Connecting-IP"
     cache.add("rl:lookup:127.0.0.1", 1, 60)
     with patch("intel.views.uncached_character_names", lambda names: list(names)):
-        resp = Client().get("/?names=A", HTTP_CF_CONNECTING_IP="x" * 100_000)
+        resp = Client().get(scan(["Pilot Aaa"]), HTTP_CF_CONNECTING_IP="x" * 100_000)
     assert resp.status_code == 429
 
 
 def test_the_same_address_spelled_two_ways_shares_one_bucket(settings: SettingsWrapper) -> None:
     settings.CLIENT_IP_HEADER = "CF-Connecting-IP"
     with patch("intel.views.uncached_character_names", lambda names: list(names)):
-        first = Client().get("/?names=A", HTTP_CF_CONNECTING_IP="2001:0db8:0000::1")
-        again = Client().get("/?names=B", HTTP_CF_CONNECTING_IP="2001:db8::1")
+        first = Client().get(scan(["Pilot Aaa"]), HTTP_CF_CONNECTING_IP="2001:0db8:0000::1")
+        again = Client().get(scan(["Pilot Bbb"]), HTTP_CF_CONNECTING_IP="2001:db8::1")
     assert (first.status_code, again.status_code) == (200, 429)
 
 
 def test_the_overflow_count_is_the_real_number_of_names_ignored() -> None:
-    """The count must not be an artefact of some cap applied before parsing."""
-    resp = Client().get("/?names=" + "%0A".join(f"Pilot{i}" for i in range(500)))
+    """The count must not be an artefact of some cap applied before parsing.
+
+    200 rather than a wilder number because the names are in the path now, and the path is
+    bounded by the request line gunicorn accepts.
+    """
+    resp = Client().get(scan([f"Pilot{i}" for i in range(200)]))
     assert resp.status_code == 200
-    assert f"{500 - MAX_CHARACTERS} further names ignored".encode() in resp.content
+    assert f"{200 - MAX_CHARACTERS} further names ignored".encode() in resp.content
 
 
 def test_an_oversized_scan_is_refused_rather_than_truncated() -> None:
     with patch("intel.views.load_entries", side_effect=ScanTooLarge(1_000_000, 100_000)):
-        resp = Client().get("/?names=Jaja%20Colene")
+        resp = Client().get(scan(["Jaja Colene"]))
     assert resp.status_code == 400
     assert b"Too many killmails" in resp.content
 
@@ -276,11 +318,14 @@ def test_an_oversized_scan_is_refused_rather_than_truncated() -> None:
 def test_cached_browsing_is_never_throttled() -> None:
     """Window/filter clicks resolve nothing new, so they must not consume a token."""
     with patch("intel.views.uncached_character_names", lambda names: []):
-        codes = [Client().get(f"/?window={w}").status_code for w in ("30", "90", "180", "365")]
+        codes = [Client().get(scan(["Jaja Colene"], w)).status_code for w in ("30", "90", "180", "365")]
     assert codes == [200, 200, 200, 200]
 
 
-@pytest.mark.parametrize("path", ["/", "/?" + SCAN, f"/?fragment=detail&char={_IDS[SCAN_NAMES[0]]}&{SCAN}"])
+@pytest.mark.parametrize(
+    "path",
+    ["/", scan(SCAN_NAMES), scan(SCAN_NAMES, fragment="detail", char=_IDS[SCAN_NAMES[0]])],
+)
 def test_no_template_comment_leaks_into_the_rendered_page(path: str) -> None:
     """Django's {# #} is single-line only; a wrapped one renders as visible text.
 
@@ -316,16 +361,16 @@ def test_target_drilldown_honours_the_active_filters() -> None:
 
 def test_targets_fragment_renders_and_validates_the_bucket() -> None:
     cid = _IDS[SCAN_NAMES[0]]
-    ok = Client().get(f"/?fragment=targets&char={cid}&bucket=Explorers&{SCAN}")
+    ok = Client().get(scan(SCAN_NAMES, fragment="targets", char=cid, bucket="Explorers"))
     assert ok.status_code == 200
     assert b"tgt-hulls" in ok.content or b"empty-state" in ok.content
-    assert Client().get(f"/?fragment=targets&char={cid}&bucket=Bogus&{SCAN}").status_code == 404
-    assert Client().get(f"/?fragment=targets&char=999999&bucket=Explorers&{SCAN}").status_code == 404
+    assert Client().get(scan(SCAN_NAMES, fragment="targets", char=cid, bucket="Bogus")).status_code == 404
+    assert Client().get(scan(SCAN_NAMES, fragment="targets", char=999999, bucket="Explorers")).status_code == 404
 
 
 def test_detail_card_offers_the_drilldown_affordance() -> None:
     cid = _IDS[SCAN_NAMES[0]]
-    body = Client().get(f"/?fragment=detail&char={cid}&{SCAN}").content
+    body = Client().get(scan(SCAN_NAMES, fragment="detail", char=cid)).content
     assert b'class="tgt-row' in body
     assert b'class="tgt-detail"' in body
     assert b"data-bucket=" in body
@@ -428,30 +473,27 @@ def test_the_ships_flown_table_hides_no_hull_the_summary_counted() -> None:
 
 def test_names_over_the_cap_are_reported_not_silently_dropped() -> None:
     """Pasting appends, so the cap is easy to reach - it must not lose pilots quietly."""
-    names = "%0A".join(f"Pilot{i}" for i in range(MAX_CHARACTERS + 3))
-    resp = Client().get(f"/?names={names}")
+    resp = Client().get(scan([f"Pilot{i}" for i in range(MAX_CHARACTERS + 3)]))
     assert resp.status_code == 200
     assert b"list is capped at" in resp.content
     assert b"3 further names ignored" in resp.content
 
 
 def test_names_within_the_cap_show_no_warning() -> None:
-    names = "%0A".join(f"Pilot{i}" for i in range(5))
-    resp = Client().get(f"/?names={names}")
+    resp = Client().get(scan([f"Pilot{i}" for i in range(5)]))
     assert resp.status_code == 200
     assert b"list is capped at" not in resp.content
 
 
 def test_duplicate_names_collapse_before_the_cap_is_applied() -> None:
     """A second paste of the same list must not count twice against the cap."""
-    names = "%0A".join(["Jaja Colene"] * 40)
-    resp = Client().get(f"/?names={names}")
+    resp = Client().get(scan(["Jaja Colene"] * 40))
     assert resp.status_code == 200
     assert b"list is capped at" not in resp.content
 
 
 def test_landing_page_shows_an_empty_box_and_profiles_nobody() -> None:
-    """No ?names= means nothing has been asked for yet - show the prompt, not results."""
+    """An empty path means nothing has been asked for yet - show the prompt, not results."""
     body = Client().get("/").content
     assert b"char-summary" not in body, "must not profile pilots before being asked"
     assert b"Press <strong>Analyze</strong>" in body
@@ -481,7 +523,7 @@ def test_landing_page_does_no_identity_lookups() -> None:
 
 
 def test_analyzing_the_pre_filled_names_renders_results() -> None:
-    body = Client().get(f"/?{SCAN}").content
+    body = Client().get(scan(SCAN_NAMES)).content
     assert b"char-summary" in body
     assert b"Press <strong>Analyze</strong>" not in body
 
@@ -511,7 +553,7 @@ def test_landing_page_does_not_fetch_the_warzone_map() -> None:
     with patch("intel.views.warzone_systems", record):
         assert Client().get("/").status_code == 200
         assert calls == [], "landing page must stay free"
-        assert Client().get(f"/?{SCAN}").status_code == 200
+        assert Client().get(scan(SCAN_NAMES)).status_code == 200
         assert calls == [1], "but a real scan needs it"
 
 
@@ -566,3 +608,172 @@ def test_pod_share_respects_filters() -> None:
     ls_only = build_profile(entry, "365", {"space": "Low sec"}, TODAY)["metrics"]
     assert ls_only["kills"] < unfiltered["kills"]
     assert isinstance(ls_only["pod_pct"], float)
+
+
+# --- the scan URL -------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("spelling", ["/Jaja_Colene", "/Jaja+Colene", "/Jaja%20Colene", "/Jaja Colene"])
+def test_every_space_spelling_reaches_the_same_scan(spelling: str) -> None:
+    """Underscore is what the app writes; `+` and a real space are accepted so a
+    hand-typed or hand-edited URL still works."""
+    resp = Client().get(spelling)
+    assert resp.status_code == 200
+    assert b"Jaja Colene" in resp.content
+
+
+def test_the_name_separator_needs_no_encoding() -> None:
+    literal = Client().get("/Jaja_Colene,ALL_BLACK")
+    encoded = Client().get("/Jaja_Colene%2CALL_BLACK")
+    assert (literal.status_code, encoded.status_code) == (200, 200)
+    for resp in (literal, encoded):
+        assert b"Jaja Colene" in resp.content and b"ALL BLACK" in resp.content
+
+
+def test_the_canonical_is_always_the_underscore_spelling() -> None:
+    body = Client().get("/Jaja+Colene,ALL%20BLACK").content.decode()
+    assert '<link rel="canonical" href="https://lscan.entropiadev.com/Jaja_Colene,ALL_BLACK">' in body
+
+
+def test_the_default_window_is_left_out_of_the_canonical() -> None:
+    default = Client().get(scan(["Jaja Colene"], DEFAULT_WINDOW)).content.decode()
+    explicit = Client().get("/Jaja_Colene/30").content.decode()
+    assert 'href="https://lscan.entropiadev.com/Jaja_Colene"' in default
+    assert 'href="https://lscan.entropiadev.com/Jaja_Colene/30"' in explicit
+
+
+def test_an_unknown_window_segment_is_not_a_scan() -> None:
+    assert Client().get("/Jaja_Colene/recent").status_code == 404
+
+
+@pytest.mark.parametrize("path", ["/wp-login.php", "/robots.txt.bak", "/.env", "/xx"])
+def test_a_path_that_cannot_be_an_eve_name_is_404(path: str) -> None:
+    """Names in the path make every URL a candidate scan. Anything that cannot be a name
+    has to 404, or every stray request is a crawlable 200 that also spends an ESI lookup."""
+    assert Client().get(path).status_code == 404
+
+
+def test_healthz_wins_over_the_names_route() -> None:
+    with patch("intel.views.connection", _Db()):
+        assert Client().get("/healthz").status_code == 200
+
+
+def test_a_legacy_query_string_link_moves_into_the_path_permanently() -> None:
+    resp = Client().get("/?names=Jaja%20Colene%2CALL%20BLACK&window=30")
+    assert resp.status_code == 301
+    assert resp["Location"] == "/Jaja_Colene,ALL_BLACK/30"
+
+
+def test_the_legacy_redirect_keeps_the_filters() -> None:
+    resp = Client().get("/?names=Jaja%20Colene&space=Wormhole")
+    assert resp.status_code == 301
+    assert resp["Location"] == "/Jaja_Colene?space=Wormhole"
+
+
+def test_robots_invites_crawlers_and_keeps_them_off_the_probe() -> None:
+    resp = Client().get("/robots.txt")
+    assert resp.status_code == 200
+    assert resp["Content-Type"].startswith("text/plain")
+    body = resp.content.decode()
+    assert "Allow: /" in body and "Disallow: /healthz" in body
+
+
+# --- what a crawler and a chat preview see ------------------------------------------
+
+
+def test_the_landing_page_titles_and_describes_the_tool() -> None:
+    body = Client().get("/").content.decode()
+    assert "<title>lscan - EVE Online local scan and PvP threat profiling</title>" in body
+    assert 'name="description" content="Paste an EVE Online local chat' in body
+
+
+def test_a_scan_page_titles_the_pilots_it_profiles() -> None:
+    body = Client().get(scan(["Jaja Colene", "ALL BLACK"])).content.decode()
+    assert "<title>Jaja Colene, ALL BLACK - EVE PvP threat profile | lscan</title>" in body
+
+
+def test_a_long_scan_names_the_first_three_and_counts_the_rest() -> None:
+    body = Client().get(scan([f"Pilot{i}" for i in range(10)])).content.decode()
+    assert "<title>Pilot0, Pilot1, Pilot2 +7 - EVE PvP threat profile | lscan</title>" in body
+
+
+def test_the_social_card_is_declared_with_absolute_urls() -> None:
+    body = Client().get("/").content.decode()
+    assert '<meta name="twitter:card" content="summary_large_image">' in body
+    assert 'property="og:url" content="https://lscan.entropiadev.com/">' in body
+    assert 'property="og:image" content="https://lscan.entropiadev.com/static/intel/img/og-card.png">' in body
+
+
+def test_the_page_has_exactly_one_h1() -> None:
+    assert Client().get("/").content.decode().count("<h1") == 1
+
+
+def test_no_third_party_image_is_eager() -> None:
+    """A 60-pilot scan asks images.evetech.net for ~180 files; none may block the page."""
+    body = Client().get(scan(SCAN_NAMES)).content.decode()
+    tags = [t.split(">")[0] for t in body.split("<img")[1:]]
+    eager = [t for t in tags if "images.evetech.net" in t and 'loading="lazy"' not in t]
+    assert eager == []
+
+
+def test_a_trailing_slash_redirects_to_the_canonical_path() -> None:
+    """A hand-edited URL picks one up easily; it must not be a dead end."""
+    for asked, wanted in [("/Jaja_Colene/", "/Jaja_Colene"), ("/Jaja_Colene/30/", "/Jaja_Colene/30")]:
+        resp = Client().get(asked)
+        assert resp.status_code == 301, asked
+        assert resp["Location"] == wanted
+
+
+def test_favicon_ico_at_the_root_reaches_the_static_file() -> None:
+    resp = Client().get("/favicon.ico")
+    assert resp.status_code == 301
+    assert resp["Location"].endswith("/intel/img/favicon.ico")
+
+
+def test_the_canonical_uses_the_spelling_esi_returns() -> None:
+    """ESI resolves names case-insensitively, so every spelling is a live URL. They must
+    all point at one canonical page rather than each claiming to be the original."""
+    for spelling in ("/Jaja_Colene", "/jaja_colene", "/JAJA_COLENE"):
+        body = Client().get(spelling).content.decode()
+        assert '<link rel="canonical" href="https://lscan.entropiadev.com/Jaja_Colene">' in body, spelling
+
+
+def test_a_name_esi_cannot_resolve_keeps_the_visitor_s_spelling() -> None:
+    """Correcting an unresolved name would hide the typo the page is reporting back."""
+    body = Client().get(scan([UNKNOWN_NAME])).content.decode()
+    assert f'href="https://lscan.entropiadev.com/{UNKNOWN_NAME.replace(" ", "_")}"' in body
+    assert "not found in EVE" in body
+
+
+@pytest.mark.parametrize("fragment", ["blocks", "detail", "targets"])
+def test_fragment_responses_are_not_indexable(fragment: str) -> None:
+    """A fragment is a bare row list with no head. Nothing links to one, but the URLs are
+    guessable and an indexed fragment is a junk search result."""
+    extra: dict[str, str] = {"fragment": fragment}
+    if fragment in ("detail", "targets"):
+        extra["char"] = str(_IDS[SCAN_NAMES[0]])
+    if fragment == "targets":
+        extra["bucket"] = "Explorers"
+    resp = Client().get(scan(SCAN_NAMES, DEFAULT_WINDOW, **extra))
+    assert resp.status_code == 200
+    assert resp["X-Robots-Tag"] == "noindex"
+
+
+def test_a_full_page_is_still_indexable() -> None:
+    assert "X-Robots-Tag" not in Client().get(scan(SCAN_NAMES))
+
+
+def test_every_declared_icon_exists_on_disk() -> None:
+    """The link tags and the manifest name six files; a missing one is a broken tab icon."""
+    import json
+    from pathlib import Path
+
+    img = Path(__file__).resolve().parent.parent / "src" / "intel" / "static" / "intel" / "img"
+    body = Client().get("/").content.decode()
+    for name in ("favicon.svg", "favicon-32x32.png", "favicon-16x16.png", "apple-touch-icon.png"):
+        assert name in body, f"{name} is not linked from the page"
+        assert (img / name).is_file(), f"{name} is linked but missing on disk"
+    assert (img / "favicon.ico").is_file()
+    manifest = json.loads((img / "site.webmanifest").read_text())
+    for icon in manifest["icons"]:
+        assert (img / Path(icon["src"]).name).is_file(), icon["src"]

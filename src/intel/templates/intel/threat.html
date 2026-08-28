@@ -6,8 +6,11 @@
 {% endblock %}
 
 {% block content %}
-<div class="intel" data-window="{{ window }}" data-names="{{ names_param }}">
+<div class="intel" data-window="{{ window }}" data-default-window="{{ default_window }}" data-names="{{ names_param }}">
     {{ filters|json_script:"intel-filters" }}
+
+    {# The only heading on the page. Bulma's minireset drops the browser h1 styling, so it sits at body size on purpose - the nav brand stays the visual mark. #}
+    <h1 class="is-size-6 mb-3">EVE Online local scan <span class="muted">- pilot threat profiles from real killmails</span></h1>
 
     {# --- Paste / input panel; window selector merged in --- #}
     <div class="box mb-4">
