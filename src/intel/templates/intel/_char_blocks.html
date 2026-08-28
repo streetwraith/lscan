@@ -4,7 +4,7 @@
 
     {# --- Collapsed compact row (click to expand; detail lazy-loaded) --- #}
     <div class="char-summary" role="button" tabindex="0" aria-expanded="false">
-        <img class="cs-portrait" src="https://images.evetech.net/characters/{{ c.id }}/portrait?size=64" alt="">
+        <img class="cs-portrait" src="https://images.evetech.net/characters/{{ c.id }}/portrait?size=64" alt="" loading="lazy" decoding="async">
         <div class="cs-id">
             <div class="cs-name">
                 {# Threat badge hidden: the ratio answers "will he win", not "will he engage" - see TODO.md #}
@@ -12,8 +12,8 @@
                 <a href="{{ c.zkill_url }}" target="_blank" rel="noopener">{{ c.name }}</a>
                 <span class="muted" title="character age">{{ c.age }}</span>
                 <span class="cs-aff">
-                    <span class="org">{% if c.corporation_id %}<img src="https://images.evetech.net/corporations/{{ c.corporation_id }}/logo?size=32" alt="">{% endif %}{{ c.corporation }}</span>
-                    <span class="org">{% if c.alliance_id %}<img src="https://images.evetech.net/alliances/{{ c.alliance_id }}/logo?size=32" alt="">{% endif %}{{ c.alliance }}</span>
+                    <span class="org">{% if c.corporation_id %}<img src="https://images.evetech.net/corporations/{{ c.corporation_id }}/logo?size=32" alt="" loading="lazy" decoding="async">{% endif %}{{ c.corporation }}</span>
+                    <span class="org">{% if c.alliance_id %}<img src="https://images.evetech.net/alliances/{{ c.alliance_id }}/logo?size=32" alt="" loading="lazy" decoding="async">{% endif %}{{ c.alliance }}</span>
                 </span>
             </div>
             <div class="cs-spaceline">
