@@ -208,15 +208,18 @@ def test_build_all_returns_a_profile_per_entry() -> None:
 
 
 def test_target_buckets_cover_the_store_vocabulary() -> None:
-    """Every label killmails.victim_bucket emits must be listed, or its kills vanish.
-
-    "Deployables" is listed ahead of the collector seeding it, so the set is a superset of
-    what the store currently returns - see /home/eve/TODO-ZKILLMANAGER.md.
-    """
-    emitted_by_the_store = {"Combat ships", "Big miners", "Small miners", "Haulers", "Explorers", "Other"}
+    """Every label killmails.victim_bucket emits must be listed, or its kills vanish."""
+    emitted_by_the_store = {
+        "Combat ships",
+        "Big miners",
+        "Small miners",
+        "Haulers",
+        "Explorers",
+        "Deployables",
+        "Other",
+    }
     names = {t["name"] for t in build_profile(CHARACTERS[0], "30", {}, TODAY)["targets"]}
-    assert emitted_by_the_store <= names
-    assert names - emitted_by_the_store == {"Deployables"}
+    assert names == emitted_by_the_store
 
 
 def test_esi_outage_is_fatal_not_a_half_rendered_page() -> None:

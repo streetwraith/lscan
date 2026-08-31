@@ -21,8 +21,6 @@ type Filters = dict[str, str]
 
 # Must contain every label killmails.victim_bucket emits - a bucket missing from this list is
 # silently dropped from the targets breakdown. Capsules are classed as combat ships there.
-# "Deployables" is listed ahead of the collector seeding it (see /home/eve/TODO-ZKILLMANAGER.md);
-# until then it simply renders as an empty row, which is harmless.
 BUCKET_ORDER: list[str] = [
     "Combat ships",
     "Big miners",
