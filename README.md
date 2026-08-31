@@ -34,7 +34,7 @@ behaviour rather than just wiring, and are worth reading before a deploy:
 | `CONN_MAX_AGE` | `60` | Seconds a Postgres connection is reused across requests. Lower it if the server enforces a shorter idle timeout. |
 | `LOG_LEVEL` | `INFO` | Level for the `intel.*` loggers. `WARNING` if the per-request ESI log is too chatty. |
 
-Deployment (Coolify on `horizon`) is documented separately in `/home/eve/LSCAN-DEPLOY.md`.
+Deployment is documented separately, outside this repository.
 
 ## Quickstart
 

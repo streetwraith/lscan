@@ -1,7 +1,7 @@
 # TODO
 
 Known gaps, newest work first. See `PROJECT.md` for architecture and
-`/home/eve/ZKILLMANAGER-USAGE.md` for what the killmail store can and cannot answer.
+the zkillmanager repository for what the killmail store can and cannot answer.
 
 ## SEO (first pass done)
 
@@ -352,7 +352,7 @@ worst case (~5 s, ~80 MB per request), so it may want lowering rather than raisi
   On SSD, `1.1` is the usual setting. This is the parameter that made the planner prefer a full
   Seq Scan of `zkillboard_killmails` over 775 PK lookups in the pod-pairing experiment, so it
   distorts plan choice for exactly the joins we care about. **Not lscan's to change** - it is
-  the shared cluster (`/home/eve/docker-compose.yml`), so it needs the DB owner's agreement and
+  a shared cluster, so it needs the DB owner's agreement and
   a restart/reload. Other current settings: `shared_buffers` 160 MB, `work_mem` 4 MB,
   `effective_cache_size` 5 GB.
 - **Push location/ship filters into SQL** *(deferred)*. Today every row in the window is
@@ -384,7 +384,7 @@ worst case (~5 s, ~80 MB per request), so it may want lowering rather than raisi
 
 ## Client IP trust behind the Cloudflare tunnel (deployment invariant)
 
-The per-IP lookup throttle needs the real visitor address, and behind Coolify/Traefik
+The per-IP lookup throttle needs the real visitor address, and behind the reverse proxy
 `REMOTE_ADDR` is only the proxy container. `X-Forwarded-For` **cannot** serve for this:
 Cloudflare *appends* the connecting IP to whatever the caller sent, so the leftmost entry is
 caller-controlled and rotating it defeats the throttle completely (which is exactly what the
@@ -407,8 +407,8 @@ The header value must parse as an IP address before it is believed - it becomes 
 and parsing also normalises the spelling so one client cannot occupy two buckets. Anything
 else falls back to `REMOTE_ADDR`.
 
-**Open, needs one post-deploy check:** confirm `CF-Connecting-IP` actually survives Traefik and
-reaches gunicorn. Log it once on a real request and check it is a public address rather than a
+**Open, needs one post-deploy check:** confirm `CF-Connecting-IP` actually survives the proxy
+and reaches gunicorn. Log it once on a real request and check it is a public address rather than a
 `172.x` container address. A missing header fails *closed* - everyone shares the proxy's
 bucket, so lookups throttle to 1/s globally - which is safe but would feel broken under
 concurrent use. That is the symptom to watch for.
@@ -431,7 +431,7 @@ Neither is exploitable today - there is no injection sink to leverage and nothin
   them into a static file - it is not a one-line setting.
 - **`SECURE_PROXY_SSL_HEADER` is unset** while TLS terminates at Cloudflare, so
   `request.is_secure()` is always false. Set it (`("HTTP_X_FORWARDED_PROTO", "https")`, and
-  only once Traefik is confirmed to set that header) alongside `SECURE_HSTS_SECONDS` if
+  only once the proxy is confirmed to set that header) alongside `SECURE_HSTS_SECONDS` if
   Cloudflare is not already sending HSTS. Today nothing reads it: the app is GET-only, sets
   no cookies and issues no redirects.
 

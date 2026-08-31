@@ -2,7 +2,7 @@
 
 Read-only, and deliberately dumb: it returns entries in exactly the shape
 ``profile_service.build_profile`` already consumes, so the aggregator is identical
-for mock and live data. See ``/home/eve/ZKILLMANAGER-USAGE.md`` for the read contract.
+for mock and live data. The zkillmanager repository documents the read contract.
 
 The store is PvP-only and windowed, holds no character/corp/alliance names, no ISK
 and no faction-warfare flag - those come back as placeholders (see TODO.md).

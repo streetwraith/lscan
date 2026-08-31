@@ -36,8 +36,8 @@ USER lscan
 EXPOSE 8000
 
 # python, not curl - curl is not in the slim runtime image. This sends `Host: 127.0.0.1:8000`,
-# so ALLOWED_HOSTS must include 127.0.0.1 (see LSCAN-DEPLOY.md "the ALLOWED_HOSTS problem").
-# If the deployment instead probes with the real Host header, drop this and let Coolify do it.
+# so ALLOWED_HOSTS must include 127.0.0.1.
+# If the deployment instead probes with the real Host header, drop this and let the platform do it.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz').read()"]
 

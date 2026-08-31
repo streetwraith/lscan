@@ -8,9 +8,9 @@ what, and how - across selectable time windows, with click-to-filter on every
 dimension. It began as the `intel` demo app inside the `helion` project and now runs on
 live data: killmails from the shared `eve` Postgres, identity from ESI.
 
-Target hosting: the `horizon` server via Docker + Coolify - see
-`/home/eve/LSCAN-DEPLOY.md` for the deployment contract. `Dockerfile` +
-`docker-entrypoint.sh` build the image, run `collectstatic` at build time and
+Target hosting: a Docker container behind a reverse proxy; the deployment contract is
+kept outside this repo. `Dockerfile` + `docker-entrypoint.sh` build the image, run
+`collectstatic` at build time and
 `warm_sde_cache` at start, then serve via gunicorn, with **WhiteNoise serving the
 hashed static files from the app itself** (gunicorn serves only the WSGI app, and
 Django serves static only under `runserver`, so without it every asset 404s in
@@ -134,22 +134,21 @@ tests/                # pytest-django behavioural tests for the view
 - **Analytics is same-origin, and that is deliberate** (added 2026-07-28). `base.html` loads
   `<script defer src="/v" data-website-id="...">` - a **relative** path, so it does not
   breach the no-CDN rule above: nothing third-party is contacted and no visitor IP leaks to
-  another vendor. Traffic goes to our **self-hosted Umami** on the `horizon` box, reached
-  because Traefik routes two paths on this app's own hostname straight to the umami
-  container: `GET /v` (tracker) and `POST /e/api/send` (collect). **Nothing in this repo
-  implements those two routes** - grep and you will not find them; they are Traefik labels on
-  the umami app, recorded in the infra repo (`umami.md`, `coolify.md`).
+  another vendor. Traffic goes to a **self-hosted analytics server**, reached because the
+  reverse proxy routes two paths on this app's own hostname straight to it: `GET /v`
+  (tracker) and `POST /e/api/info` (collect). **Nothing in this repo implements those two
+  routes** - grep and you will not find them. They are proxy configuration, recorded outside
+  this repo.
   - The website id is a **public** identifier (it ships in the HTML), not a secret.
   - ⚠️ **`/v` and `/e/` are reserved at the URL root.** Do not add app routes there or you
-    will shadow analytics - Traefik matches those before Django ever sees the request.
-  - ⚠️ **The tracker path is extensionless on purpose - do not "fix" it to `/v.js`.** The same
-    tracker is proxied from a Cloudflare Pages site too, and there `/v.js` returned 404 at some
-    edge locations, silently losing those visitors. The exact cause was never confirmed (the
-    leading alternative is that Pages activates Function routes gradually after a deploy), but
-    both sites deliberately use the same path so there is one shape to reason about. Traefik here
-    routes either path correctly, so this costs lscan nothing. Full evidence and the operational
-    lessons are in the infra repo (`umami.md`).
-  - ⚠️ **The two paths are coordinated with the collector**, which serves them via its
+    will shadow analytics - the proxy matches those before Django ever sees the request.
+  - ⚠️ **The tracker path is extensionless on purpose - do not "fix" it to `/v.js`.** Another
+    site proxies the same tracker, and there `/v.js` returned 404 at some edge locations,
+    silently losing those visitors. The exact cause was never confirmed, but both sites
+    deliberately use the same path so there is one shape to reason about. The proxy here routes
+    either path correctly, so this costs lscan nothing. The full evidence is kept outside this
+    repo.
+  - ⚠️ **The two paths are coordinated with the analytics server**, which serves them via its
     `TRACKER_SCRIPT_NAME` / `COLLECT_API_ENDPOINT` settings; changing one side alone silently
     stops collection. They are deliberately bland (no `analytics`/`umami`/`track`) so filter
     lists have nothing to key on.
@@ -178,7 +177,7 @@ because nothing in `src/` imports it.
 ## Live data via zkillmanager
 
 **Data collection is a separate concern**, handled by the **zkillmanager** service (a Go
-collector at `/home/eve/zkillmanager`) that ingests zKillboard into a shared Postgres
+collector in its own repository) that ingests zKillboard into a shared Postgres
 store. lscan only reads it:
 
 1. **Done** - connected **read-only**: `DATABASE_URL` points at the shared `eve` database
@@ -256,9 +255,9 @@ It refuses rather than truncates: a partial row set would silently misreport eve
 **What the store cannot answer.** It is PvP-only and windowed (retention), holds no
 character/corp/alliance **names** (ESI), no **ISK** (`total_value` is always NULL), and no
 faction-warfare flag. Ship and location names come from the `sde` schema in the same
-database. See `/home/eve/ZKILLMANAGER-USAGE.md` for the full read contract.
+database. The zkillmanager repository documents the full read contract.
 
 The collector design, the Postgres schema (`killmails.kills` +
 `killmails.zkillboard_killmails` + `attacker_bucket`/`victim_bucket`/`stealth_ship`, reusing
 the existing `sde` schema), the zKill fetch/cache strategy, and the localthreat prior-art
-comparison now live in `/home/eve/zkillmanager` (see its `PROJECT.md` and `docs/zkill-notes.md`).
+comparison now live in the zkillmanager repository (its `PROJECT.md` and `docs/zkill-notes.md`).

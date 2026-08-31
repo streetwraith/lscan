@@ -38,10 +38,7 @@
     <link rel="stylesheet" href="{% static 'intel/css/vendor/bulma.min.css' %}">
     <link rel="stylesheet" href="{% static 'intel/css/vendor/bootstrap-icons.min.css' %}">
     {% block css %}{% endblock %}
-    <!-- Self-hosted Umami analytics. Same-origin on purpose: /v and /e/api/send are
-         routed to the umami container by Traefik labels, so there is no third-party host
-         for a tracker blocklist to match. The script path is deliberately extensionless -
-         see PROJECT.md. Infra-side record: devops repo, umami.md. -->
+    {# Analytics. Same-origin and extensionless on purpose - see PROJECT.md, "Conventions". #}
     <script defer src="/v" data-website-id="b867959d-ef15-4530-9a12-ec9a4fb8d8ce"></script>
 </head>
 <body>
