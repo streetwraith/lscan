@@ -86,7 +86,7 @@ td.loc i { color: var(--bulma-text-weak); margin-right: 4px; opacity: 0.7; }
 .empty-state { color: var(--bulma-text-weak); font-size: 0.85rem; padding: 16px; text-align: center; }
 
 /* Shown only on the empty page (see threat.html), so it never competes with a scan. */
-.data-note { color: var(--bulma-text-weak); font-size: 0.85rem; margin: 8px auto 0; max-width: 62ch; text-align: center; }
+.data-note { color: var(--bulma-text-weak); font-size: 0.85rem; margin-top: 38px; text-align: center; }
 .data-note .dn-title { font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
 .na { color: var(--bulma-text-weak); cursor: help; opacity: 0.7; }
 
