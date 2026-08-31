@@ -59,6 +59,20 @@
         {% if error %}{% include "intel/_error.html" %}{% else %}{% include "intel/_char_blocks.html" %}{% endif %}
     </div>
 
+    {# Outside #char-blocks on purpose: a fragment swap replaces that div, and this note belongs to the empty page. #}
+    {% if not profiles and not error %}
+    <div class="data-note">
+        <h2 class="dn-title">How to read these numbers (and why they can differ from zkillboard.com or other sources)</h2>
+        <p>
+            lscan reads raw zKillboard killmail dumps (no live zKillboard API calls) and gets pilot
+            identity from ESI. lscan counts pure PvP only: a player must have killed a player, so
+            ratting losses and structure kills never appear. Pods fold into the ship kill before
+            them. Stealth hulls (covert ops cloak, or immunity to directional scan) are highlighted
+            on purpose.
+        </p>
+    </div>
+    {% endif %}
+
 </div>
 {% endblock %}
 

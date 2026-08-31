@@ -505,6 +505,13 @@ def test_landing_page_shows_an_empty_box_and_profiles_nobody() -> None:
     assert b'data-names=""' in body, "no scan is active yet"
 
 
+def test_the_data_note_shows_only_on_the_empty_page() -> None:
+    """It explains what the numbers are built from, so it belongs where there are none."""
+    assert b"data-note" in Client().get("/").content
+    assert b"data-note" not in Client().get(scan(SCAN_NAMES)).content
+    assert b"data-note" not in Client().get(scan(SCAN_NAMES, fragment="blocks")).content
+
+
 def test_the_paste_box_is_empty_until_names_are_asked_for() -> None:
     """It used to ship a hardcoded pilot list; the box must start blank."""
     body = Client().get("/").content.decode()
