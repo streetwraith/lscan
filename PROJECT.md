@@ -162,6 +162,52 @@ tests/                # pytest-django behavioural tests for the view
   go to a cache backend, not new tables; reintroducing the contrib apps would mean
   granting lscan a writable schema and revisiting backup scope.
 
+## Error reporting (Bugsink)
+
+Errors go to the shared Bugsink instance (`https://errors.entropiadev.com`, Sentry-SDK
+compatible) through `sentry-sdk`, pinned. The init block is the last thing in `settings.py`.
+`BUGSINK_DSN` turns it on, and an empty DSN makes every SDK call a no-op, so a checkout
+without one stays silent. Bugsink stores error events only, so tracing and profiling are off.
+
+The Django and `logging` integrations register themselves. The logging integration turns a
+record at `INFO` or above into a breadcrumb, and a record at `ERROR` or above into an event.
+That threshold **is** the reporting policy.
+
+| Fault | Reports? | Why |
+|---|---|---|
+| An unhandled view exception | yes, one event | measured: one event, from the Django integration, with the request context |
+| The ESI circuit trip (`esi._trip`, CRITICAL) | yes | our source IP is near an ESI ban, and every visitor shares that budget |
+| `warm_sde_cache` failing at container start | yes | Postgres is unreachable at boot; the entrypoint continues, but a person must look |
+| An ESI outage, or an ESI 5xx | no - WARNING | the view answers 503; somebody else's outage needs no alert |
+| A refused scan (over `MAX_SCAN_ROWS`) | no | that is the guard working |
+| A throttled lookup (429) | no | our own rate limit, explained to the visitor on the page |
+| A 404, including a view-raised `Http404` | no | the Django integration drops it |
+| A wrong `Host` header (`DisallowedHost`) | no | dropped twice: `ignore_errors` for the exception, `ignore_logger` for the record it writes |
+
+**No frame locals leave the process** (`include_local_variables: False`). A failed database
+connect puts the Postgres password in six frame locals, `psycopg`'s `conninfo` string among
+them, and the SDK's default scrubber misses every one: it matches key names and does not
+recurse. Do not turn locals back on to make an event richer. The traceback, the request and
+the breadcrumbs stay.
+
+`environment` is `production`, or `development` when `DEBUG` is on; `APP_ENV` overrides both.
+`release` is Coolify's `SOURCE_COMMIT`, which reaches a git-built container. An empty value
+and the literal `HEAD` both become `None`, because a constant release is worse than no
+release: every deploy then looks like the same one, and no regression is detectable.
+
+A DSN the SDK cannot parse logs `BUGSINK_DSN is not a valid DSN; error reporting is off` and
+the app keeps serving. Check that line first when events stop arriving. A public app must not
+fail to boot over its error reporter, and no event could carry this fault anyway - the
+reporting channel is the broken thing.
+
+The options live in one `BUGSINK_OPTIONS` dict so `tests/test_error_reporting.py` can run the
+real options against a recording transport. Every row of the table above has a test, except
+that the `warm_sde_cache` row is covered one step short: the test asserts the command still
+raises, because the event itself comes from the SDK at process death. That row was verified by
+live fire instead. `tests/conftest.py` disarms the SDK for the whole suite: a developer `.env`
+holds the live DSN, and `pytest-django` forces `DEBUG` off, so no `DEBUG` check would protect
+the tests.
+
 ## Dev data note
 
 The paste box starts **empty** - the app ships no default pilot list. It carried five real

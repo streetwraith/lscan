@@ -8,9 +8,15 @@ read-only, pointing at the shared ``eve`` store (``killmails`` + ``sde``) that
 zkillmanager fills.
 """
 
+import logging
 from pathlib import Path
+from typing import Any
 
 import environ
+import sentry_sdk
+from django.core.exceptions import SuspiciousOperation
+from sentry_sdk.integrations.logging import ignore_logger
+from sentry_sdk.utils import BadDsn
 
 # repo root: this file is src/lscan/settings.py
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -136,3 +142,56 @@ LOGGING = {
         "django.request": {"handlers": ["console"], "level": "WARNING", "propagate": False},
     },
 }
+
+# Errors go to the shared Bugsink instance (Sentry-SDK compatible; it stores error events
+# only, so tracing and profiling stay off). An empty DSN makes every SDK call a no-op, which
+# is how a checkout without one stays silent.
+# Lowercase on purpose: Django lifts only uppercase names into settings, and its debug page
+# prints the settings dump filtered by name - a filter that BUGSINK_DSN does not trip. A DSN
+# is a write credential, so it must not appear on an error page.
+_bugsink_dsn = env("BUGSINK_DSN", default="")
+
+
+def _release(source_commit: str) -> str | None:
+    """Coolify injects the real commit into a git-built container, and the literal "HEAD" into
+    a Docker-image app. Both "HEAD" and an empty value mean "no release", because a constant
+    release is worse than none: every deploy then looks like the same one, so no regression
+    can be detected.
+    """
+    return None if source_commit in ("", "HEAD") else source_commit
+
+
+# Kept as a dict so the test suite can run these exact options against a recording
+# transport, rather than against options a test invented.
+BUGSINK_OPTIONS: dict[str, Any] = {
+    "traces_sample_rate": 0,
+    "profiles_sample_rate": 0,
+    # The store is self-hosted, so the caller IP and the request headers are worth having on
+    # an event. lscan is unauthenticated and holds no account data.
+    "send_default_pii": True,
+    # Measured: a failed database connect puts the Postgres password in six frame locals,
+    # psycopg's `conninfo` string among them, and the SDK's default scrubber matches key
+    # names only and does not recurse. No locals leave the process.
+    "include_local_variables": False,
+    # `or` rather than a default: django-environ reads an empty APP_ENV as a set value, and
+    # a blank environment tag is worse than none - it groups dev events with production.
+    "environment": env("APP_ENV", default="") or ("development" if DEBUG else "production"),
+    "release": _release(env("SOURCE_COMMIT", default="")),
+    "max_breadcrumbs": 25,
+    # Faults a client causes, not ours. DisallowedHost is a SuspiciousOperation, so this one
+    # entry covers a wrong Host header too.
+    "ignore_errors": [SuspiciousOperation, BrokenPipeError, ConnectionResetError],
+}
+
+# Registered even without a DSN, because it is process-global and the suite asserts on it:
+# the ignored exception above still writes a log record, and that record is a second event.
+ignore_logger("django.security.DisallowedHost")
+
+if _bugsink_dsn:
+    try:
+        sentry_sdk.init(dsn=_bugsink_dsn, **BUGSINK_OPTIONS)
+    except BadDsn:
+        # A public app must not fail to boot because its error reporter is misconfigured, and
+        # no event can report this fault - the reporting channel is the broken thing. The DSN
+        # stays out of the message: it is a write credential.
+        logging.getLogger(__name__).error("BUGSINK_DSN is not a valid DSN; error reporting is off")

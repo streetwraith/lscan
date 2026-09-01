@@ -22,7 +22,7 @@ ISK values - see `TODO.md` for the gaps and `PROJECT.md` for architecture.
 
 ## Configuration
 
-Everything lives in `.env` (see `.env.example` for the full list). Four settings change
+Everything lives in `.env` (see `.env.example` for the full list). These settings change
 behaviour rather than just wiring, and are worth reading before a deploy:
 
 | setting | default | why it matters |
@@ -33,6 +33,8 @@ behaviour rather than just wiring, and are worth reading before a deploy:
 | `ESI_COMPATIBILITY_DATE` | pinned | Omitting the header makes ESI serve its *oldest* behaviour, so bumping this is a deliberate, tested change. |
 | `CONN_MAX_AGE` | `60` | Seconds a Postgres connection is reused across requests. Lower it if the server enforces a shorter idle timeout. |
 | `LOG_LEVEL` | `INFO` | Level for the `intel.*` loggers. `WARNING` if the per-request ESI log is too chatty. |
+| `BUGSINK_DSN` | empty | Turns error reporting on. Empty keeps the SDK silent, so local runs and CI report nothing. A DSN is a write credential: keep it out of git. See the error-reporting section of `PROJECT.md`. |
+| `APP_ENV` | `development` with `DEBUG`, else `production` | Tags every error event, so a local run stays filterable in Bugsink. |
 
 Deployment is documented separately, outside this repository.
 

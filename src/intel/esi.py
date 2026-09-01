@@ -141,6 +141,10 @@ def _request(method: str, path: str, body: Any | None = None) -> Any | None:
 
     Raises EsiUnavailable / EsiRateLimited - an unreachable or exhausted ESI must surface,
     never be quietly rendered as missing data.
+
+    Both failures log at WARNING on purpose. The view answers 503, so somebody else's outage
+    needs no alert, and Bugsink turns a WARNING into a breadcrumb but an ERROR into an event.
+    The one line here worth waking a person is the circuit trip, which _trip logs at CRITICAL.
     """
     blocked = cache.get(_BLOCKED_KEY)
     if blocked:
@@ -149,13 +153,13 @@ def _request(method: str, path: str, body: Any | None = None) -> Any | None:
     try:
         response = _client.request(method, path, json=body)
     except httpx.HTTPError as err:
-        logger.error("ESI %s %s unreachable", method, path, exc_info=True)
+        logger.warning("ESI %s %s unreachable", method, path, exc_info=True)
         raise EsiUnavailable(f"{method} {path}: {err}") from err
 
     _check_budget(response)
 
     if response.is_server_error:
-        logger.error("ESI %s %s -> %s", method, path, response.status_code)
+        logger.warning("ESI %s %s -> %s", method, path, response.status_code)
         raise EsiUnavailable(f"{method} {path}: HTTP {response.status_code}")
     if response.is_client_error:
         # A definitive answer: the id/name does not resolve. Normal, not an outage.
