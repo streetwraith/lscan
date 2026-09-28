@@ -58,7 +58,7 @@ Every character an EVE name can hold is legal unencoded in a path segment except
 space, so nothing needs percent-encoding: the comma separates names as-is, and the
 space becomes an underscore. `+` and a literal `%20` are accepted on the way in too, so
 a hand-typed URL works, but `intel/scan_url.py` always writes the underscore spelling
-back out - one scan, one canonical. The window is dropped when it is the default (90),
+back out - one scan, one canonical. The window is dropped when it is the default (365),
 for the same reason, and the names are re-spelled the way ESI spells them, because ESI
 resolves a name case-insensitively and every spelling is therefore a live URL.
 
@@ -246,7 +246,7 @@ store. lscan only reads it:
    warming is an optimisation, never a dependency. The local copy lives for the life of the
    process, so a mid-flight SDE change needs a restart - which is when warming happens anyway.
 2. **Done** - the page is fed by that store and the paste/analyze box is live. It takes
-   in-game character **names**; the window selector is 30/90/180/365 days, defaulting to 90.
+   in-game character **names**; the window selector is 30/90/180/365 days, defaulting to 365.
 3. **Done** - identity comes from ESI (`intel/esi.py`): pasted names resolve to ids, and
    names, corporation, alliance, tickers and security status are filled in.
 4. **`ISK` and `eff` render as `-`** - the store has no ISK values (`total_value` is always

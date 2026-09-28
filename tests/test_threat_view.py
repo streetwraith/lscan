@@ -186,9 +186,9 @@ def test_unresolvable_name_is_reported_not_silently_dropped() -> None:
     assert b"not found in EVE" in resp.content
 
 
-def test_recent_window_is_gone_and_default_is_90_days() -> None:
+def test_recent_window_is_gone_and_default_is_365_days() -> None:
     assert "recent" not in WINDOWS
-    assert DEFAULT_WINDOW == "90"
+    assert DEFAULT_WINDOW == "365"
     # an unknown window in a legacy query string falls back to the default rather than erroring
     assert Client().get("/?window=recent")["Location"] == "/"
 
