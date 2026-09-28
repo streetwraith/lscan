@@ -268,6 +268,15 @@
         if (sum) { e.preventDefault(); toggleExpand(sum); }
     });
 
+    // The first click into the list selects all of it, so a new paste replaces it; a later
+    // click places the caret as usual. Selecting on focus instead loses to that click's mouseup.
+    var namesBox = document.getElementById('names');
+    if (namesBox) {
+        var selectOnClick = false;
+        namesBox.addEventListener('mousedown', function () { selectOnClick = document.activeElement !== namesBox; });
+        namesBox.addEventListener('click', function () { if (selectOnClick) { namesBox.select(); } });
+    }
+
     renderChips();
     syncWindowButtons();
 })();
